@@ -323,4 +323,11 @@ export function getElementNameFromYear(year: number): string {
 
 export function getDestinyFromYear(year: number): { element: string; elementName: string; destinyName: string } {
   const canChi = getCanChiYear(year);
-  return DESTINY_TABLE[canChi]
+  return (
+    DESTINY_TABLE[canChi] ?? {
+      element: "tho",
+      elementName: "Thổ",
+      destinyName: "Bình Địa Mộc — Tự nhiên, vững chắc",
+    }
+  );
+}
