@@ -1,5 +1,7 @@
 // ============================================================
-// gemini.ts — Huyền Cơ Các: Gemini AI (Native Fetch)
+// gemini.ts — Huyền Cơ Các: AI Core (Groq API)
+// Dùng Groq thay Gemini vì Gemini free tier không hỗ trợ VN
+// Model: llama-3.1-8b-instant — nhanh, miễn phí, không cần billing
 // ============================================================
 
 export type FortuneTopic = "Tổng quan" | "Sự Nghiệp" | "Tình Duyên" | "Tài Lộc";
@@ -21,14 +23,12 @@ export interface FortuneResult {
 export interface GeminiError {
   type: "no_api_key" | "network" | "rate_limit" | "unknown";
   message: string;
-  // Raw debug info — để hiển thị khi cần debug
   debug?: string;
 }
 
-// ─── Model ───────────────────────────────────────────────────
-// Dùng model stable đã xác nhận có trong danh sách
-const MODEL = "gemini-2.0-flash-lite";
-const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+// ─── Groq config ──────────────────────────────────────────────
+const GROQ_URL   = "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_MODEL = "llama-3.1-8b-instant"; // Miễn phí, 6000 RPD, rất nhanh
 
 // ─── Prompt ───────────────────────────────────────────────────
 
@@ -41,20 +41,25 @@ function buildPrompt(
   topic: FortuneTopic
 ): string {
   const guides: Record<FortuneTopic, string> = {
-    "Tổng quan":   "Tổng quan năng lượng hôm nay: cảm xúc, tương tác, lời khuyên thực tế.",
-    "Sự Nghiệp":   "Công việc hôm nay: deadline, đồng nghiệp, cơ hội hay rủi ro. Cụ thể và thực tế.",
-    "Tình Duyên":  "Tình cảm hôm nay: gặp gỡ, giữ lửa hay giải quyết mâu thuẫn. Ấm áp, không phán xét.",
-    "Tài Lộc":     "Tiền bạc hôm nay: chi tiêu, cơ hội hay tiết kiệm. Thực tế và hữu ích.",
+    "Tổng quan":   "Tổng quan năng lượng hôm nay: cảm xúc, tương tác xã hội, lời khuyên thực tế tốt nhất.",
+    "Sự Nghiệp":   "Công việc hôm nay: deadline, đồng nghiệp, cơ hội hay rủi ro. Rất cụ thể và thực tế.",
+    "Tình Duyên":  "Tình cảm hôm nay: nếu độc thân — cơ hội gặp gỡ hay tự yêu bản thân. Nếu có đôi — giữ lửa hoặc giải mâu thuẫn. Ấm áp, không phán xét.",
+    "Tài Lộc":     "Tiền bạc hôm nay: nên chi tiêu không, cơ hội tài chính, hay nhắc tiết kiệm. Thực tế và hữu ích.",
   };
 
-  return `Bạn là chuyên gia tâm lý và tử vi Gen Z, nói như nhắn tin cho bạn thân.
+  return `Bạn là chuyên gia tâm lý và tử vi phong cách Gen Z, nói chuyện như người bạn thân đang nhắn tin bằng tiếng Việt.
 
-Sinh năm: ${userYear} (${userCanChi}) | Mệnh: ${userMenh}
-Ngày: ${dateLabel} | Can Chi ngày: ${todayCanChi} | Chủ đề: ${topic}
+Thông tin: Sinh năm ${userYear} (${userCanChi}) | Mệnh ${userMenh} | Ngày ${dateLabel} | Can Chi ngày: ${todayCanChi} | Chủ đề: ${topic}
 
-${guides[topic]}
+Nhiệm vụ: ${guides[topic]}
 
-Quy tắc: 3-4 câu, không Hán Việt khó, không hù dọa, không chung chung, ví dụ thực tế (meeting, nhắn tin, cà phê...). Text thuần, không markdown.`;
+Quy tắc bắt buộc:
+- Đúng 3-4 câu, không hơn không kém.
+- Tiếng Việt tự nhiên, gần gũi như nhắn tin.
+- KHÔNG dùng từ Hán Việt khó (cấm: tuần không, hung tinh, cát tinh...).
+- KHÔNG hù dọa, KHÔNG nói chung chung.
+- Đề cập ví dụ thực tế (meeting, deadline, nhắn tin bạn bè, cà phê...).
+- Chỉ trả về text thuần, không markdown, không gạch đầu dòng, không tiêu đề.`;
 }
 
 // ─── Main ─────────────────────────────────────────────────────
@@ -67,20 +72,27 @@ export async function generateDailyFortune(
   dateLabel: string,
   topic: FortuneTopic = "Tổng quan"
 ): Promise<FortuneResult> {
-  const apiKey = (import.meta.env.VITE_GEMINI_API_KEY ?? "").trim();
+  const apiKey = (import.meta.env.VITE_GROQ_API_KEY ?? "").trim();
 
   if (!apiKey) {
     throw {
       type: "no_api_key",
-      message: "Chưa có API key. Kiểm tra Cloudflare Environment Variables.",
-      debug: "VITE_GEMINI_API_KEY is empty or undefined",
+      message: "Chưa có API key. Kiểm tra Cloudflare Environment Variables (VITE_GROQ_API_KEY).",
+      debug: "VITE_GROQ_API_KEY is empty",
     } as GeminiError;
   }
 
-  const url  = `${API_BASE}/${MODEL}:generateContent?key=${apiKey}`;
   const body = {
-    contents: [{ parts: [{ text: buildPrompt(userYear, userMenh, userCanChi, todayCanChi, dateLabel, topic) }] }],
-    generationConfig: { temperature: 0.85, maxOutputTokens: 300 },
+    model: GROQ_MODEL,
+    messages: [
+      {
+        role: "user",
+        content: buildPrompt(userYear, userMenh, userCanChi, todayCanChi, dateLabel, topic),
+      },
+    ],
+    temperature: 0.85,
+    max_tokens:  300,
+    stream:      false,
   };
 
   const controller = new AbortController();
@@ -88,95 +100,60 @@ export async function generateDailyFortune(
 
   let res: Response;
   try {
-    res = await fetch(url, {
+    res = await fetch(GROQ_URL, {
       method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify(body),
-      signal:  controller.signal,
+      headers: {
+        "Content-Type":  "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body:   JSON.stringify(body),
+      signal: controller.signal,
     });
   } catch (err: unknown) {
     clearTimeout(timer);
     const isAbort = err instanceof Error && err.name === "AbortError";
     throw {
       type:    "network",
-      message: isAbort
-        ? "Kết nối quá chậm (timeout 15s), thử lại nhé."
-        : "Không kết nối được tới Gemini. Kiểm tra mạng.",
-      debug: String(err),
+      message: isAbort ? "Kết nối quá chậm, thử lại nhé." : "Không kết nối được. Kiểm tra mạng.",
+      debug:   String(err),
     } as GeminiError;
   }
   clearTimeout(timer);
 
-  // Đọc body dù lỗi hay không
   let rawBody = "";
   try { rawBody = await res.text(); } catch { rawBody = "(unreadable)"; }
 
   if (!res.ok) {
-    // Parse để lấy thông tin lỗi chi tiết
     let apiMsg = "";
     try {
-      const j = JSON.parse(rawBody) as { error?: { message?: string; status?: string } };
-      apiMsg = j?.error?.message ?? j?.error?.status ?? "";
+      const j = JSON.parse(rawBody) as { error?: { message?: string } };
+      apiMsg = j?.error?.message ?? "";
     } catch { apiMsg = rawBody.slice(0, 200); }
 
     const debug = `HTTP ${res.status} | ${apiMsg}`;
 
     if (res.status === 429) {
-      throw {
-        type:    "rate_limit",
-        message: "API đang bị giới hạn (429). Chờ 1-2 phút rồi thử lại nhé.",
-        debug,
-      } as GeminiError;
+      throw { type: "rate_limit", message: "Đang bị giới hạn tạm thời, thử lại sau 1 phút nhé.", debug } as GeminiError;
     }
-    if (res.status === 400) {
-      throw {
-        type:    "unknown",
-        message: `Yêu cầu không hợp lệ (400): ${apiMsg}`,
-        debug,
-      } as GeminiError;
+    if (res.status === 401) {
+      throw { type: "no_api_key", message: "API key Groq không hợp lệ, kiểm tra lại nhé.", debug } as GeminiError;
     }
-    if (res.status === 401 || res.status === 403) {
-      throw {
-        type:    "no_api_key",
-        message: `API key không hợp lệ hoặc thiếu quyền (${res.status}).`,
-        debug,
-      } as GeminiError;
-    }
-    if (res.status === 404) {
-      throw {
-        type:    "unknown",
-        message: `Model không tồn tại (404): ${MODEL}`,
-        debug,
-      } as GeminiError;
-    }
-    throw {
-      type:    "unknown",
-      message: `Lỗi từ Gemini (${res.status}): ${apiMsg || "không rõ nguyên nhân"}`,
-      debug,
-    } as GeminiError;
+    throw { type: "unknown", message: `Lỗi từ server (${res.status}): ${apiMsg}`, debug } as GeminiError;
   }
 
-  // Parse success
+  // Parse response (OpenAI-compatible format)
   let text = "";
   try {
     const j = JSON.parse(rawBody) as {
-      candidates?: { content?: { parts?: { text?: string }[] } }[];
+      choices?: { message?: { content?: string } }[];
     };
-    text = j?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+    text = j?.choices?.[0]?.message?.content?.trim() ?? "";
   } catch {
-    throw {
-      type:    "unknown",
-      message: "Phản hồi từ AI không đọc được, thử lại nhé.",
-      debug:   rawBody.slice(0, 300),
-    } as GeminiError;
+    throw { type: "unknown", message: "Phản hồi AI không đọc được, thử lại nhé.", debug: rawBody.slice(0, 300) } as GeminiError;
   }
 
   if (!text) {
-    throw {
-      type:    "unknown",
-      message: "AI trả về phản hồi rỗng, thử lại nhé.",
-      debug:   rawBody.slice(0, 300),
-    } as GeminiError;
+    throw { type: "unknown", message: "AI trả về rỗng, thử lại nhé.", debug: rawBody.slice(0, 300) } as GeminiError;
   }
 
   return { text, topic, generatedAt: new Date().toISOString(), cached: false };
@@ -184,8 +161,8 @@ export async function generateDailyFortune(
 
 // ─── Cache ────────────────────────────────────────────────────
 
-const PREFIX   = "hcc_v3_";           // đổi prefix = xoá cache cũ tự động
-const TTL      = 24 * 60 * 60 * 1000; // 24h
+const PREFIX = "hcc_v4_";
+const TTL    = 24 * 60 * 60 * 1000;
 
 export function makeCacheKey(dateIso: string, birthYear: number | string, topic: FortuneTopic) {
   return `${PREFIX}${dateIso}_${birthYear}_${topic.replace(/\s/g, "_")}`;
@@ -203,14 +180,13 @@ export function getCachedFortune(key: string): FortuneResult | null {
 
 export function setCachedFortune(key: string, result: FortuneResult) {
   try {
-    localStorage.setItem(key, JSON.stringify({
-      ...result, cached: true, expiresAt: Date.now() + TTL,
-    }));
+    localStorage.setItem(key, JSON.stringify({ ...result, cached: true, expiresAt: Date.now() + TTL }));
     // Dọn cache cũ (prefix cũ)
-    const OLD = ["hcc_fortune_", "hcc_"];
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const k = localStorage.key(i);
-      if (k && OLD.some(o => k.startsWith(o))) localStorage.removeItem(k);
+      if (k && (k.startsWith("hcc_v3_") || k.startsWith("hcc_v2_") || k.startsWith("hcc_fortune_"))) {
+        localStorage.removeItem(k);
+      }
     }
-  } catch { /* full */ }
+  } catch { /* storage full */ }
 }
