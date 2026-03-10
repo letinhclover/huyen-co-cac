@@ -27,7 +27,7 @@ export interface GeminiError {
 
 // ─── Model ───────────────────────────────────────────────────
 // Dùng model stable đã xác nhận có trong danh sách
-const MODEL = "gemini-2.0-flash-001";
+const MODEL = "gemini-2.0-flash-lite";
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
 // ─── Prompt ───────────────────────────────────────────────────
