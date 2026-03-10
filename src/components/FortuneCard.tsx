@@ -1,10 +1,9 @@
 // ============================================================
 // FortuneCard.tsx — AI Fortune Card
-// Auto-load · Typewriter · Topic Buttons · Viral Share
-// Fix: fetchGuard chống React StrictMode gọi API 2 lần → 429
+// Manual trigger · Cache-first · Typewriter · Topic Buttons
 // ============================================================
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   generateDailyFortune,
@@ -17,8 +16,6 @@ import {
 } from "../utils/gemini";
 import { UserProfile, solarToLunar, getCanChiDay, toJDN } from "../utils/astrology";
 
-// ─── Props ────────────────────────────────────────────────────
-
 interface FortuneCardProps {
   date: Date;
   userProfile: UserProfile | null;
@@ -27,75 +24,66 @@ interface FortuneCardProps {
 
 // ─── Typewriter hook ──────────────────────────────────────────
 
-function useTypewriter(text: string, speed = 30, onDone?: () => void) {
+function useTypewriter(text: string, speed = 28, onDone?: () => void) {
   const [displayed, setDisplayed] = useState("");
   const [done, setDone]           = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const idxRef   = useRef(0);
+  const timerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const idxRef    = useRef(0);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
 
-  useEffect(() => {
+  const start = useCallback((t: string) => {
     if (timerRef.current) clearInterval(timerRef.current);
     setDisplayed("");
     setDone(false);
     idxRef.current = 0;
-
-    if (!text) return;
-
+    if (!t) return;
     timerRef.current = setInterval(() => {
       idxRef.current += 1;
-      setDisplayed(text.slice(0, idxRef.current));
-      if (idxRef.current >= text.length) {
+      setDisplayed(t.slice(0, idxRef.current));
+      if (idxRef.current >= t.length) {
         clearInterval(timerRef.current!);
         setDone(true);
         onDoneRef.current?.();
       }
     }, speed);
+  }, [speed]);
 
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [text, speed]);
-
-  return { displayed, done };
+  return { displayed, done, start };
 }
 
-// ─── Share helper ─────────────────────────────────────────────
+// ─── Share ────────────────────────────────────────────────────
 
-async function captureAndShare(el: HTMLElement, filename: string): Promise<void> {
+async function captureAndShare(el: HTMLElement, filename: string) {
   const { toPng } = await import("html-to-image");
-  const dataUrl   = await toPng(el, { cacheBust: true, pixelRatio: 2 });
-  const link      = document.createElement("a");
-  link.download   = filename;
-  link.href       = dataUrl;
-  link.click();
+  const url  = await toPng(el, { cacheBust: true, pixelRatio: 2 });
+  const a    = document.createElement("a");
+  a.download = filename;
+  a.href     = url;
+  a.click();
 }
 
 // ─── Types ────────────────────────────────────────────────────
 
-type LoadState = "idle" | "loading" | "typing" | "done" | "error";
+type CardState = "idle" | "loading" | "typing" | "done" | "error";
 
-interface TopicState {
-  loadState: LoadState;
-  text: string;
-  error: GeminiError | null;
-}
-
-const EMPTY: TopicState = { loadState: "idle", text: "", error: null };
-
-// ─── Main Component ───────────────────────────────────────────
+// ─── Component ───────────────────────────────────────────────
 
 export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardProps) {
-  const shareRef = useRef<HTMLDivElement>(null);
+  const shareRef   = useRef<HTMLDivElement>(null);
+  const isFetching = useRef(false);
 
-  // ⚡ KEY FIX: ref lưu fetchId đang chạy — chống gọi API 2 lần
-  // React StrictMode mount → unmount → mount lại trong <1ms,
-  // ref tồn tại xuyên suốt nên chặn được lần gọi thứ 2.
-  const activeFetchRef = useRef<string>("");
+  const [cardState,  setCardState]  = useState<CardState>("idle");
+  const [mainText,   setMainText]   = useState("");
+  const [cardError,  setCardError]  = useState<GeminiError | null>(null);
 
-  const [overviewState, setOverviewState] = useState<TopicState>(EMPTY);
-  const [activeTopic,   setActiveTopic]   = useState<FortuneTopic | null>(null);
-  const [topicState,    setTopicState]    = useState<TopicState>(EMPTY);
-  const [isSharing,     setIsSharing]     = useState(false);
+  // Topic deep-dive
+  const [activeTopic,  setActiveTopic]  = useState<FortuneTopic | null>(null);
+  const [topicState,   setTopicState]   = useState<CardState>("idle");
+  const [topicText,    setTopicText]    = useState("");
+  const [topicError,   setTopicError]   = useState<GeminiError | null>(null);
+
+  const [isSharing, setIsSharing] = useState(false);
 
   const dateIso     = date.toISOString().split("T")[0];
   const dateLabel   = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
@@ -103,111 +91,110 @@ export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardPr
   const todayCanChi = getCanChiDay(jdn);
   const lunar       = solarToLunar(date.getDate(), date.getMonth() + 1, date.getFullYear());
 
-  // ── Auto-load Tổng quan khi date/profile thay đổi ────────────
-  useEffect(() => {
-    setActiveTopic(null);
-    setTopicState(EMPTY);
+  const cacheKey = userProfile
+    ? makeCacheKey(dateIso, userProfile.birthYear, "Tổng quan")
+    : null;
 
-    if (!userProfile) {
-      setOverviewState(EMPTY);
-      activeFetchRef.current = "";
-      return;
+  // Kiểm tra cache mỗi lần render (date thay đổi → cacheKey thay đổi)
+  const cachedOverview = cacheKey ? getCachedFortune(cacheKey) : null;
+
+  // Nếu có cache mà state vẫn idle → cập nhật state
+  // Dùng ref để chỉ chạy 1 lần khi cacheKey đổi
+  const lastCacheKeyRef = useRef<string | null>(null);
+  if (cacheKey && cacheKey !== lastCacheKeyRef.current) {
+    lastCacheKeyRef.current = cacheKey;
+    const c = getCachedFortune(cacheKey);
+    if (c && cardState !== "done") {
+      // Không dùng setState trong render body — dùng lazy init trick
+      // Thực ra cần reset khi ngày đổi:
+      if (mainText !== c.text) {
+        setTimeout(() => {
+          setMainText(c.text);
+          setCardState("done");
+          setActiveTopic(null);
+          setTopicState("idle");
+          setTopicText("");
+        }, 0);
+      }
+    } else if (!c) {
+      setTimeout(() => {
+        setCardState("idle");
+        setMainText("");
+        setCardError(null);
+        setActiveTopic(null);
+        setTopicState("idle");
+        setTopicText("");
+        isFetching.current = false;
+      }, 0);
     }
+  }
 
-    const cacheKey = makeCacheKey(dateIso, userProfile.birthYear, "Tổng quan");
-    const cached   = getCachedFortune(cacheKey);
+  // Typewriters
+  const overviewTW = useTypewriter(mainText, 28, () => setCardState("done"));
+  const topicTW    = useTypewriter(topicText, 28, () => setTopicState("done"));
 
+  // ── Gọi AI Tổng quan ──────────────────────────────────────
+  const handleAskAI = useCallback(async () => {
+    if (!userProfile || isFetching.current) return;
+
+    // Check cache trước
+    const key    = makeCacheKey(dateIso, userProfile.birthYear, "Tổng quan");
+    const cached = getCachedFortune(key);
     if (cached) {
-      setOverviewState({ loadState: "done", text: cached.text, error: null });
+      setMainText(cached.text);
+      setCardState("done");
       return;
     }
 
-    // Tạo fetchId duy nhất cho request này
-    const fetchId = `overview_${dateIso}_${userProfile.birthYear}`;
+    isFetching.current = true;
+    setCardState("loading");
+    setCardError(null);
 
-    // Nếu request này đã đang chạy → bỏ qua (React StrictMode protection)
-    if (activeFetchRef.current === fetchId) return;
-    activeFetchRef.current = fetchId;
+    try {
+      const result = await generateDailyFortune(
+        String(userProfile.birthYear),
+        `${userProfile.elementName} (${userProfile.destinyName})`,
+        userProfile.canChiYear,
+        todayCanChi,
+        dateLabel,
+        "Tổng quan"
+      );
+      setCachedFortune(key, { ...result, cached: false });
+      setMainText(result.text);
+      setCardState("typing");
+      overviewTW.start(result.text);
+    } catch (err) {
+      setCardError(err as GeminiError);
+      setCardState("error");
+      isFetching.current = false;
+    }
+  }, [userProfile, dateIso, todayCanChi, dateLabel, overviewTW]);
 
-    setOverviewState({ loadState: "loading", text: "", error: null });
-
-    generateDailyFortune(
-      String(userProfile.birthYear),
-      `${userProfile.elementName} (${userProfile.destinyName})`,
-      userProfile.canChiYear,
-      todayCanChi,
-      dateLabel,
-      "Tổng quan"
-    )
-      .then((result) => {
-        // Chỉ xử lý nếu fetchId vẫn là request hiện tại
-        if (activeFetchRef.current !== fetchId) return;
-        // Lưu cache NGAY để request tiếp theo (nếu có) dùng cache
-        setCachedFortune(cacheKey, { ...result, cached: false });
-        setOverviewState({ loadState: "typing", text: result.text, error: null });
-      })
-      .catch((err: GeminiError) => {
-        if (activeFetchRef.current !== fetchId) return;
-        activeFetchRef.current = ""; // Reset để có thể retry
-        setOverviewState({ loadState: "error", text: "", error: err });
-      });
-
-  }, [dateIso, userProfile?.birthYear]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Retry overview ──────────────────────────────────────────
-  const handleRetryOverview = useCallback(() => {
-    if (!userProfile) return;
-    // Xoá cache key để force re-fetch
-    activeFetchRef.current = "";
-    const cacheKey = makeCacheKey(dateIso, userProfile.birthYear, "Tổng quan");
-    try { localStorage.removeItem(cacheKey); } catch { /* ignore */ }
-
-    setOverviewState({ loadState: "loading", text: "", error: null });
-
-    const fetchId = `overview_retry_${dateIso}_${Date.now()}`;
-    activeFetchRef.current = fetchId;
-
-    generateDailyFortune(
-      String(userProfile.birthYear),
-      `${userProfile.elementName} (${userProfile.destinyName})`,
-      userProfile.canChiYear,
-      todayCanChi,
-      dateLabel,
-      "Tổng quan"
-    )
-      .then((result) => {
-        if (activeFetchRef.current !== fetchId) return;
-        setCachedFortune(cacheKey, { ...result, cached: false });
-        setOverviewState({ loadState: "typing", text: result.text, error: null });
-      })
-      .catch((err: GeminiError) => {
-        if (activeFetchRef.current !== fetchId) return;
-        activeFetchRef.current = "";
-        setOverviewState({ loadState: "error", text: "", error: err });
-      });
-  }, [userProfile, dateIso, todayCanChi, dateLabel]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Topic buttons ───────────────────────────────────────────
+  // ── Topic buttons ─────────────────────────────────────────
   const handleTopicClick = useCallback(async (topic: FortuneTopic) => {
     if (!userProfile) return;
-    if (topicState.loadState === "loading" || topicState.loadState === "typing") return;
+    if (topicState === "loading" || topicState === "typing") return;
 
-    if (activeTopic === topic && topicState.loadState === "done") {
+    if (activeTopic === topic && topicState === "done") {
       setActiveTopic(null);
-      setTopicState(EMPTY);
+      setTopicState("idle");
+      setTopicText("");
       return;
     }
 
     setActiveTopic(topic);
 
-    const cacheKey = makeCacheKey(dateIso, userProfile.birthYear, topic);
-    const cached   = getCachedFortune(cacheKey);
+    const key    = makeCacheKey(dateIso, userProfile.birthYear, topic);
+    const cached = getCachedFortune(key);
     if (cached) {
-      setTopicState({ loadState: "done", text: cached.text, error: null });
+      setTopicText(cached.text);
+      setTopicState("done");
       return;
     }
 
-    setTopicState({ loadState: "loading", text: "", error: null });
+    setTopicState("loading");
+    setTopicError(null);
+
     try {
       const result = await generateDailyFortune(
         String(userProfile.birthYear),
@@ -217,44 +204,33 @@ export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardPr
         dateLabel,
         topic
       );
-      setCachedFortune(cacheKey, { ...result, cached: false });
-      setTopicState({ loadState: "typing", text: result.text, error: null });
+      setCachedFortune(key, { ...result, cached: false });
+      setTopicText(result.text);
+      setTopicState("typing");
+      topicTW.start(result.text);
     } catch (err) {
-      setTopicState({ loadState: "error", text: "", error: err as GeminiError });
+      setTopicError(err as GeminiError);
+      setTopicState("error");
     }
-  }, [userProfile, activeTopic, topicState.loadState, dateIso, todayCanChi, dateLabel]);
+  }, [userProfile, activeTopic, topicState, dateIso, todayCanChi, dateLabel, topicTW]);
 
-  const handleTopicTypingDone = useCallback(() => {
-    setTopicState((prev) => ({ ...prev, loadState: "done" }));
-  }, []);
-
-  const handleOverviewTypingDone = useCallback(() => {
-    setOverviewState((prev) => ({ ...prev, loadState: "done" }));
-  }, []);
-
-  // ── Share ───────────────────────────────────────────────────
+  // ── Share ─────────────────────────────────────────────────
   const handleShare = useCallback(async () => {
     if (!shareRef.current || isSharing) return;
     setIsSharing(true);
-    try {
-      await captureAndShare(shareRef.current, `huyen-co-cac-${dateIso}.png`);
-    } catch { /* ignore */ }
+    try { await captureAndShare(shareRef.current, `huyen-co-cac-${dateIso}.png`); }
+    catch { /* ignore */ }
     finally { setIsSharing(false); }
   }, [dateIso, isSharing]);
 
-  const overviewDone    = overviewState.loadState === "done";
-  const showTopicButtons = overviewDone;
-
-  // ── No profile ──────────────────────────────────────────────
+  // ── No profile ────────────────────────────────────────────
   if (!userProfile) {
     return (
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mx-4 my-2">
         <div className="rounded-2xl border border-white/8 bg-white/3 px-5 py-5 flex flex-col items-center gap-3 text-center">
           <div className="w-12 h-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-2xl">🤖</div>
-          <div>
-            <p className="text-white/75 text-sm font-medium mb-1">AI chưa biết bạn là ai</p>
-            <p className="text-white/35 text-xs leading-relaxed">Thiết lập bản mệnh để nhận luận giải cá nhân hóa mỗi ngày</p>
-          </div>
+          <p className="text-white/75 text-sm font-medium">AI chưa biết bạn là ai</p>
+          <p className="text-white/35 text-xs leading-relaxed">Thiết lập bản mệnh để nhận luận giải cá nhân hóa</p>
           <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={onSetupProfile}
             className="rounded-xl bg-violet-500/15 border border-violet-500/25 text-violet-300 text-xs font-medium px-5 py-2">
             Thiết lập ngay →
@@ -264,143 +240,194 @@ export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardPr
     );
   }
 
+  const isDone = cardState === "done";
+
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mx-4 my-2">
 
-      {/* ── Vùng chụp ảnh share ── */}
-      <div ref={shareRef}
-        className="rounded-2xl border border-violet-500/15 bg-gradient-to-br from-[#0D0A1F] via-[#0B0F1A] to-[#0A0D1E] overflow-hidden">
+      <div ref={shareRef} className="rounded-2xl border border-violet-500/15 bg-gradient-to-br from-[#0D0A1F] via-[#0B0F1A] to-[#0A0D1E] overflow-hidden">
 
         {/* Header */}
         <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-white/5">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center text-base">✨</div>
+            <div className="w-8 h-8 rounded-xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center">✨</div>
             <div>
               <p className="text-[10px] text-violet-400/60 tracking-widest uppercase">AI Gemini · Luận Giải</p>
-              <p className="text-white/55 text-xs">{dateLabel} · {lunar.canChiYear}</p>
+              <p className="text-white/50 text-xs">{dateLabel} · {lunar.canChiYear}</p>
             </div>
           </div>
           <AnimatePresence>
-            {overviewDone && (
+            {isDone && (
               <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                 className="text-[9px] text-white/20 border border-white/8 rounded-full px-2 py-0.5">
-                Đã lưu hôm nay
+                {cachedOverview ? "Cache" : "Đã lưu"}
               </motion.span>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Tổng quan */}
-        <div className="px-5 py-4">
-          <p className="text-[10px] text-violet-400/40 tracking-widest uppercase mb-2">🌟 Tổng Quan Ngày</p>
+        {/* Body */}
+        <div className="px-5 py-5 min-h-20">
+          <p className="text-[10px] text-violet-400/40 tracking-widest uppercase mb-3">🌟 Tổng Quan Ngày</p>
 
           <AnimatePresence mode="wait">
-            {overviewState.loadState === "loading" && (
-              <motion.div key="ov-load" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="flex items-center gap-3 py-3">
-                <SpinnerIcon />
+
+            {/* IDLE — nút bấm */}
+            {cardState === "idle" && (
+              <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+                className="flex flex-col items-center gap-3 py-2">
+                <p className="text-white/30 text-xs text-center">
+                  Can Chi hôm nay: <span className="text-amber-400/60">{todayCanChi}</span>
+                  {" · "}Tuổi: <span className="text-amber-400/60">{userProfile.canChiYear}</span>
+                </p>
+                <motion.button
+                  whileHover={{ scale: 1.04, boxShadow: "0 0 20px rgba(139,92,246,0.2)" }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleAskAI}
+                  className="flex items-center gap-2 rounded-xl bg-violet-500/20 border border-violet-500/30 text-violet-200 text-sm font-medium px-6 py-2.5 transition-all"
+                >
+                  <span>✨</span> Bấm để AI luận giải hôm nay
+                </motion.button>
+              </motion.div>
+            )}
+
+            {/* LOADING */}
+            {cardState === "loading" && (
+              <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="flex flex-col items-center gap-3 py-4">
+                <Spinner />
                 <p className="text-violet-300/50 text-xs tracking-widest">Đang kết nối vũ trụ...</p>
               </motion.div>
             )}
-            {(overviewState.loadState === "typing" || overviewState.loadState === "done") && overviewState.text && (
-              <motion.div key="ov-text" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                <TypewriterBlock text={overviewState.text} isTyping={overviewState.loadState === "typing"}
-                  speed={30} onDone={handleOverviewTypingDone} />
-              </motion.div>
-            )}
-            {overviewState.loadState === "error" && overviewState.error && (
-              <motion.div key="ov-error" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                <ErrorBlock error={overviewState.error} onRetry={handleRetryOverview} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
 
-        {/* Topic buttons */}
-        <AnimatePresence>
-          {showTopicButtons && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-              className="px-5 pb-4">
-              <p className="text-[10px] text-white/20 tracking-widest uppercase mb-2.5">Hỏi sâu hơn →</p>
-              <div className="flex gap-2">
-                {FORTUNE_TOPICS.filter((t) => t.id !== "Tổng quan").map((t) => {
-                  const isActive  = activeTopic === t.id;
-                  const isLoading = isActive && (topicState.loadState === "loading" || topicState.loadState === "typing");
-                  return (
-                    <motion.button key={t.id} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.93 }}
-                      onClick={() => handleTopicClick(t.id)}
-                      className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition-all flex-1 justify-center ${
-                        isActive
-                          ? "border-violet-400/40 bg-violet-500/20 text-violet-200"
-                          : "border-white/8 bg-white/4 text-white/45 hover:border-violet-400/20 hover:text-violet-300/70"
-                      }`}>
-                      {isLoading
-                        ? <motion.span animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} className="text-base">⟳</motion.span>
-                        : <span className="text-base">{t.emoji}</span>
-                      }
-                      {t.label}
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Topic result */}
-        <AnimatePresence>
-          {activeTopic && topicState.loadState !== "idle" && (
-            <motion.div key={activeTopic}
-              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-              <div className="mx-5 mb-5 rounded-xl border border-violet-500/10 bg-violet-900/10 px-4 py-3">
-                <p className="text-[10px] text-violet-400/50 tracking-widest uppercase mb-2">
-                  {FORTUNE_TOPICS.find((t) => t.id === activeTopic)?.emoji} {activeTopic}
+            {/* TYPING */}
+            {cardState === "typing" && (
+              <motion.div key="typing" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <p className="text-white/75 text-sm leading-relaxed">
+                  {overviewTW.displayed}
+                  <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ duration: 0.55, repeat: Infinity }}
+                    className="inline-block w-0.5 h-4 bg-violet-400/70 ml-0.5 align-middle rounded-full" />
                 </p>
-                <AnimatePresence mode="wait">
-                  {topicState.loadState === "loading" && (
-                    <motion.div key="tp-load" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      className="flex items-center gap-2 py-1">
-                      <SpinnerIcon small />
-                      <p className="text-violet-300/50 text-xs">Đang thỉnh thiên cơ...</p>
-                    </motion.div>
-                  )}
-                  {(topicState.loadState === "typing" || topicState.loadState === "done") && topicState.text && (
-                    <motion.div key="tp-text" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                      <TypewriterBlock text={topicState.text} isTyping={topicState.loadState === "typing"}
-                        speed={28} onDone={handleTopicTypingDone} />
-                    </motion.div>
-                  )}
-                  {topicState.loadState === "error" && topicState.error && (
-                    <motion.div key="tp-error" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                      <ErrorBlock error={topicState.error}
-                        onRetry={() => activeTopic && handleTopicClick(activeTopic)} small />
+              </motion.div>
+            )}
+
+            {/* DONE */}
+            {cardState === "done" && mainText && (
+              <motion.div key="done" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-3">
+                <p className="text-white/75 text-sm leading-relaxed">{mainText}</p>
+
+                {/* Topic buttons */}
+                <div className="pt-2 border-t border-white/5">
+                  <p className="text-[10px] text-white/20 tracking-widest uppercase mb-2">Hỏi sâu hơn →</p>
+                  <div className="flex gap-2">
+                    {FORTUNE_TOPICS.filter(t => t.id !== "Tổng quan").map(t => {
+                      const isActive  = activeTopic === t.id;
+                      const isBusy    = isActive && (topicState === "loading" || topicState === "typing");
+                      return (
+                        <motion.button key={t.id} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.92 }}
+                          onClick={() => handleTopicClick(t.id)}
+                          className={`flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-medium transition-all flex-1 justify-center ${
+                            isActive
+                              ? "border-violet-400/40 bg-violet-500/20 text-violet-200"
+                              : "border-white/8 bg-white/4 text-white/40 hover:border-violet-400/20 hover:text-violet-300/70"
+                          }`}>
+                          {isBusy
+                            ? <motion.span animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>⟳</motion.span>
+                            : <span>{t.emoji}</span>
+                          }
+                          {t.label}
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Topic result */}
+                <AnimatePresence>
+                  {activeTopic && topicState !== "idle" && (
+                    <motion.div key={activeTopic}
+                      initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                      <div className="rounded-xl border border-violet-500/10 bg-violet-900/10 px-4 py-3">
+                        <p className="text-[10px] text-violet-400/50 tracking-widest uppercase mb-2">
+                          {FORTUNE_TOPICS.find(t => t.id === activeTopic)?.emoji} {activeTopic}
+                        </p>
+                        <AnimatePresence mode="wait">
+                          {topicState === "loading" && (
+                            <motion.div key="tl" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                              className="flex items-center gap-2">
+                              <Spinner small /><p className="text-violet-300/50 text-xs">Đang thỉnh thiên cơ...</p>
+                            </motion.div>
+                          )}
+                          {(topicState === "typing" || topicState === "done") && topicText && (
+                            <motion.div key="tt" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                              <p className="text-white/70 text-sm leading-relaxed">
+                                {topicState === "typing" ? topicTW.displayed : topicText}
+                                {topicState === "typing" && !topicTW.done && (
+                                  <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ duration: 0.55, repeat: Infinity }}
+                                    className="inline-block w-0.5 h-4 bg-violet-400/70 ml-0.5 align-middle rounded-full" />
+                                )}
+                              </p>
+                            </motion.div>
+                          )}
+                          {topicState === "error" && topicError && (
+                            <motion.div key="te" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                              <ErrorBlock error={topicError} onRetry={() => activeTopic && handleTopicClick(activeTopic)} small />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+
+                {/* Retry row */}
+                <div className="flex justify-end pt-1 border-t border-white/5">
+                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      if (cacheKey) { try { localStorage.removeItem(cacheKey); } catch { /**/ } }
+                      isFetching.current = false;
+                      setCardState("idle");
+                      setMainText("");
+                      setActiveTopic(null);
+                      setTopicState("idle");
+                      setTopicText("");
+                    }}
+                    className="text-white/20 text-[10px] hover:text-violet-400/50 transition-colors flex items-center gap-1">
+                    ↻ Luận giải lại
+                  </motion.button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* ERROR */}
+            {cardState === "error" && cardError && (
+              <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <ErrorBlock error={cardError} onRetry={() => { isFetching.current = false; handleAskAI(); }} />
+              </motion.div>
+            )}
+
+          </AnimatePresence>
+        </div>
 
         {/* Watermark */}
-        <div className="px-5 pb-3 flex items-center justify-between">
-          <p className="text-white/12 text-[10px] tracking-wide">🔮 Thỉnh quẻ tại: huyen-co-cac.pages.dev</p>
-          <p className="text-white/12 text-[10px]">{dateLabel}</p>
+        <div className="px-5 pb-3 flex justify-between">
+          <p className="text-white/10 text-[10px]">🔮 huyen-co-cac.pages.dev</p>
+          <p className="text-white/10 text-[10px]">{dateLabel}</p>
         </div>
       </div>
 
       {/* Share button */}
       <AnimatePresence>
-        {overviewDone && (
+        {isDone && (
           <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
             className="mt-2 flex justify-end px-1">
             <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.95 }}
               onClick={handleShare} disabled={isSharing}
-              className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/4 text-white/40 text-xs px-4 py-2 hover:border-amber-400/20 hover:text-amber-300/60 transition-all disabled:opacity-40">
+              className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/4 text-white/35 text-xs px-4 py-2 hover:border-amber-400/20 hover:text-amber-300/60 transition-all disabled:opacity-40">
               {isSharing
-                ? <><motion.span animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>⟳</motion.span> Đang tạo ảnh...</>
-                : <><span>📤</span> Tải ảnh để chia sẻ Story</>
+                ? <><motion.span animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>⟳</motion.span> Đang tạo...</>
+                : <><span>📤</span> Tải ảnh chia sẻ Story</>
               }
             </motion.button>
           </motion.div>
@@ -410,27 +437,9 @@ export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardPr
   );
 }
 
-// ─── Typewriter Block ──────────────────────────────────────────
-
-function TypewriterBlock({ text, isTyping, speed = 30, onDone }: {
-  text: string; isTyping: boolean; speed?: number; onDone?: () => void;
-}) {
-  const { displayed, done } = useTypewriter(isTyping ? text : "", speed, onDone);
-  const shown = isTyping ? displayed : text;
-  return (
-    <p className="text-white/75 text-sm leading-relaxed">
-      {shown}
-      {isTyping && !done && (
-        <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ duration: 0.55, repeat: Infinity }}
-          className="inline-block w-0.5 h-4 bg-violet-400/70 ml-0.5 align-middle rounded-full" />
-      )}
-    </p>
-  );
-}
-
 // ─── Spinner ──────────────────────────────────────────────────
 
-function SpinnerIcon({ small }: { small?: boolean }) {
+function Spinner({ small }: { small?: boolean }) {
   return (
     <div className={`relative flex-shrink-0 ${small ? "w-5 h-5" : "w-8 h-8"}`}>
       <motion.div className="absolute inset-0 rounded-full border-2 border-violet-500/15"
