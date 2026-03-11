@@ -1,396 +1,240 @@
 // ============================================================
-// UtilsTab.tsx — Tiện Ích
-// Đổi ngày âm↔dương · Tuổi xây nhà/kết hôn · Ngày tốt
+// UtilsTab.tsx — Tiện Ích Lịch Vạn Niên
+// Sử dụng dữ liệu thật từ lichvn.pak
 // ============================================================
 
-import { useState, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { solarToLunarFull, analyzeAge, getDayInfo, getGoodDaysInMonth, getGoodYears } from "../utils/almanac";
-import { UserProfile } from "../utils/astrology";
+import { analyzeDayFull, getGoodDaysInMonth, analyzeAge } from "../utils/almanac";
+import { DayDetailPanel } from "../components/DayDetailPanel";
 
-interface UtilsTabProps {
-  userProfile:    UserProfile | null;
-  onSetupProfile: () => void;
+type Tool = "ngaytot" | "doingay" | "xemtuoi";
+
+interface Props {
+  birthYear?: number;
 }
 
-type Tool = "convert" | "age" | "gooddays";
-
-export function UtilsTab({ userProfile, onSetupProfile }: UtilsTabProps) {
-  const [tool, setTool] = useState<Tool>("convert");
-
-  const TOOLS = [
-    { id: "convert"  as Tool, emoji: "🔄", label: "Đổi Ngày"  },
-    { id: "age"      as Tool, emoji: "🏠", label: "Xem Tuổi"  },
-    { id: "gooddays" as Tool, emoji: "📆", label: "Ngày Tốt"  },
-  ];
+export function UtilsTab({ birthYear }: Props) {
+  const [tool, setTool] = useState<Tool>("ngaytot");
 
   return (
-    <div className="pb-2">
-      {/* Tool selector */}
-      <div className="mx-4 mt-4 mb-1 flex gap-1 p-1 rounded-2xl bg-white/4 border border-white/6">
-        {TOOLS.map(t => (
-          <motion.button key={t.id} whileTap={{ scale: 0.94 }} onClick={() => setTool(t.id)}
-            className={`flex-1 flex items-center justify-center gap-1 rounded-xl py-2 text-xs font-medium transition-all ${
-              tool === t.id
-                ? "bg-amber-500/20 border border-amber-400/30 text-amber-200"
-                : "text-white/35 hover:text-white/55"
-            }`}>
-            <span>{t.emoji}</span>{t.label}
-          </motion.button>
+    <div className="flex flex-col gap-0 pb-8">
+      <div className="sticky top-0 z-10 px-4 pt-3 pb-2" style={{ background: "rgba(8,12,24,0.95)", backdropFilter: "blur(12px)" }}>
+        <div className="grid grid-cols-3 gap-1 rounded-xl p-1 border border-white/8" style={{ background: "rgba(255,255,255,0.04)" }}>
+          {([
+            ["ngaytot", "🗓", "Ngày Tốt"],
+            ["doingay", "🔄", "Đổi Ngày"],
+            ["xemtuoi", "👤", "Xem Tuổi"],
+          ] as [Tool, string, string][]).map(([id, icon, label]) => (
+            <button
+              key={id}
+              onClick={() => setTool(id)}
+              className={"py-2 rounded-lg text-xs font-medium transition-all " + (tool === id ? "text-yellow-300 bg-yellow-500/15 border border-yellow-500/30" : "text-gray-400")}
+            >
+              {icon} {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="px-4">
+        <AnimatePresence mode="wait">
+          {tool === "ngaytot"  && <NgayTotTool key="ngaytot" />}
+          {tool === "doingay"  && <DoiNgayTool key="doingay" />}
+          {tool === "xemtuoi"  && <XemTuoiTool key="xemtuoi" birthYear={birthYear} />}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+function NgayTotTool() {
+  const now = new Date();
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [year,  setYear]  = useState(now.getFullYear());
+  const [purpose, setPurpose] = useState<"kinhDoanh"|"cuoiHoi"|"xayDung"|"anTang">("kinhDoanh");
+  const [expanded, setExpanded] = useState<number | null>(null);
+
+  const goodDays = useMemo(() => getGoodDaysInMonth(month, year, purpose), [month, year, purpose]);
+
+  const prevMonth = () => { if (month === 1) { setMonth(12); setYear(y => y-1); } else setMonth(m => m-1); };
+  const nextMonth = () => { if (month === 12) { setMonth(1); setYear(y => y+1); } else setMonth(m => m+1); };
+
+  const purposeLabels: Record<string,string> = {
+    kinhDoanh:"💼 Kinh Doanh", cuoiHoi:"💍 Cưới Hỏi", xayDung:"🏗 Xây Dựng", anTang:"⚱ An Táng"
+  };
+
+  return (
+    <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} className="flex flex-col gap-3 pt-2">
+      <div className="flex items-center justify-between">
+        <button onClick={prevMonth} className="w-9 h-9 rounded-full border border-white/12 text-white flex items-center justify-center">‹</button>
+        <p className="text-base font-bold text-white">Tháng {month}/{year}</p>
+        <button onClick={nextMonth} className="w-9 h-9 rounded-full border border-white/12 text-white flex items-center justify-center">›</button>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        {(["kinhDoanh","cuoiHoi","xayDung","anTang"] as const).map(p => (
+          <button key={p} onClick={() => setPurpose(p)}
+            className={"py-2 rounded-xl text-xs font-medium border transition-all " + (purpose === p ? "bg-yellow-500/15 border-yellow-500/40 text-yellow-300" : "bg-white/3 border-white/8 text-gray-400")}
+          >{purposeLabels[p]}</button>
         ))}
       </div>
-
-      <AnimatePresence mode="wait">
-        {tool === "convert" && (
-          <motion.div key="conv" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <DateConverter />
-          </motion.div>
-        )}
-        {tool === "age" && (
-          <motion.div key="age" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <AgeChecker userProfile={userProfile} onSetupProfile={onSetupProfile} />
-          </motion.div>
-        )}
-        {tool === "gooddays" && (
-          <motion.div key="gd" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <GoodDaysFinder />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-// ─── 1. Đổi ngày dương ↔ âm ──────────────────────────────────
-
-function DateConverter() {
-  const today  = new Date();
-  const [day,   setDay]   = useState(today.getDate());
-  const [month, setMonth] = useState(today.getMonth() + 1);
-  const [year,  setYear]  = useState(today.getFullYear());
-  const [result, setResult] = useState<ReturnType<typeof solarToLunarFull> | null>(null);
-  const [dayInfo, setDayInfo] = useState<ReturnType<typeof getDayInfo> | null>(null);
-  const [error, setError] = useState("");
-
-  const handleConvert = useCallback(() => {
-    setError("");
-    if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1900 || year > 2100) {
-      setError("Ngày tháng không hợp lệ"); return;
-    }
-    try {
-      const r = solarToLunarFull(day, month, year);
-      const d = getDayInfo(day, month, year);
-      setResult(r);
-      setDayInfo(d);
-    } catch { setError("Không chuyển đổi được ngày này"); }
-  }, [day, month, year]);
-
-  return (
-    <div className="mx-4 mt-3 flex flex-col gap-3">
-      {/* Input */}
-      <div className="rounded-2xl border border-white/8 bg-white/3 p-4">
-        <p className="text-[10px] text-white/35 tracking-widest uppercase mb-3">🔄 Nhập Ngày Dương Lịch</p>
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <label className="text-[10px] text-white/30 mb-1 block">Ngày</label>
-            <input type="number" min={1} max={31} value={day}
-              onChange={e => setDay(+e.target.value)}
-              className="w-full bg-white/6 border border-white/10 rounded-xl px-3 py-2.5 text-white/80 text-sm text-center focus:outline-none focus:border-amber-400/40" />
-          </div>
-          <div className="flex-1">
-            <label className="text-[10px] text-white/30 mb-1 block">Tháng</label>
-            <input type="number" min={1} max={12} value={month}
-              onChange={e => setMonth(+e.target.value)}
-              className="w-full bg-white/6 border border-white/10 rounded-xl px-3 py-2.5 text-white/80 text-sm text-center focus:outline-none focus:border-amber-400/40" />
-          </div>
-          <div className="flex-1 flex-grow-2">
-            <label className="text-[10px] text-white/30 mb-1 block">Năm</label>
-            <input type="number" min={1900} max={2100} value={year}
-              onChange={e => setYear(+e.target.value)}
-              className="w-full bg-white/6 border border-white/10 rounded-xl px-3 py-2.5 text-white/80 text-sm text-center focus:outline-none focus:border-amber-400/40" />
-          </div>
+      <div className="rounded-2xl border border-white/8 overflow-hidden" style={{ background: "rgba(15,20,40,0.9)" }}>
+        <div className="px-4 py-3 border-b border-white/6">
+          <p className="text-sm text-gray-300">
+            <span className="text-yellow-400 font-bold">{goodDays.length}</span> ngày tốt cho {purposeLabels[purpose].replace(/^[^ ]+ /,"")}
+          </p>
         </div>
-        {error && <p className="text-red-400/70 text-xs mt-2">{error}</p>}
-        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-          onClick={handleConvert}
-          className="w-full mt-3 py-2.5 rounded-xl bg-amber-500/18 border border-amber-400/25 text-amber-200 text-sm font-medium">
-          Tra Cứu →
-        </motion.button>
-      </div>
-
-      {/* Result */}
-      <AnimatePresence>
-        {result && dayInfo && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-2">
-
-            {/* Date info */}
-            <div className="rounded-2xl border border-amber-500/15 bg-amber-900/8 p-4">
-              <div className="grid grid-cols-2 gap-3">
-                <InfoRow label="Dương lịch" value={`${result.weekday}, ${day}/${month}/${year}`} />
-                <InfoRow label="Âm lịch" value={`${result.lunar.isLeap ? "Nhuận " : ""}${result.lunar.day}/${result.lunar.month}/${result.lunar.year}`} />
-                <InfoRow label="Can Chi ngày" value={result.canChiDay} />
-                <InfoRow label="Can Chi tháng" value={result.canChiMonth} />
-                <InfoRow label="Can Chi năm" value={result.canChiYear} />
-                <InfoRow label="Trực hôm nay" value={dayInfo.truc} />
-              </div>
-            </div>
-
-            {/* Day rating */}
-            <div className="rounded-2xl border border-white/8 bg-white/3 p-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] text-white/30 tracking-widest uppercase">Đánh Giá Ngày</p>
-                <div className="flex gap-0.5">
-                  {[1,2,3,4,5].map(i => (
-                    <span key={i} className={`text-sm ${i <= dayInfo.starCount ? "text-amber-400" : "text-white/15"}`}>★</span>
-                  ))}
-                </div>
-              </div>
-              <p className="text-white/55 text-xs leading-relaxed mb-3">{dayInfo.trucMeaning}</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <p className="text-[9px] text-green-400/60 uppercase tracking-widest mb-1">✅ Nên làm</p>
-                  {dayInfo.goodFor.slice(0, 4).map((g, i) => (
-                    <p key={i} className="text-white/50 text-[10px]">· {g}</p>
-                  ))}
-                </div>
-                <div>
-                  <p className="text-[9px] text-red-400/60 uppercase tracking-widest mb-1">❌ Nên tránh</p>
-                  {dayInfo.badFor.slice(0, 4).map((b, i) => (
-                    <p key={i} className="text-white/50 text-[10px]">· {b}</p>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-// ─── 2. Xem tuổi xây nhà / kết hôn ──────────────────────────
-
-function AgeChecker({ userProfile, onSetupProfile }: { userProfile: UserProfile | null; onSetupProfile: () => void }) {
-  const currentYear = new Date().getFullYear();
-  const [birthYear, setBirthYear] = useState(userProfile?.birthYear ?? 1990);
-  const [checkYear, setCheckYear] = useState(currentYear);
-  const [result, setResult] = useState<ReturnType<typeof analyzeAge> | null>(null);
-  const [goodXayNha, setGoodXayNha] = useState<number[]>([]);
-  const [goodKetHon, setGoodKetHon] = useState<number[]>([]);
-
-  const handleCheck = useCallback(() => {
-    const r = analyzeAge(birthYear, checkYear);
-    setResult(r);
-    setGoodXayNha(getGoodYears(birthYear, "xayNha", currentYear, 3));
-    setGoodKetHon(getGoodYears(birthYear, "ketHon", currentYear, 3));
-  }, [birthYear, checkYear, currentYear]);
-
-  const OVERALL_STYLE: Record<string, string> = {
-    "tốt":              "border-green-500/25 bg-green-900/10",
-    "trung bình":       "border-blue-500/20 bg-blue-900/8",
-    "cần cúng giải":    "border-amber-500/25 bg-amber-900/10",
-    "nên tránh":        "border-red-500/25 bg-red-900/10",
-  };
-
-  return (
-    <div className="mx-4 mt-3 flex flex-col gap-3">
-      {/* Input */}
-      <div className="rounded-2xl border border-white/8 bg-white/3 p-4">
-        <p className="text-[10px] text-white/35 tracking-widest uppercase mb-3">🏠 Kim Lâu · Hoàng Ốc · Tam Tai</p>
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <label className="text-[10px] text-white/30 mb-1 block">Năm sinh</label>
-            <input type="number" min={1920} max={2010} value={birthYear}
-              onChange={e => setBirthYear(+e.target.value)}
-              className="w-full bg-white/6 border border-white/10 rounded-xl px-3 py-2.5 text-white/80 text-sm text-center focus:outline-none focus:border-amber-400/40" />
-          </div>
-          <div className="flex-1">
-            <label className="text-[10px] text-white/30 mb-1 block">Xem năm</label>
-            <input type="number" min={2024} max={2040} value={checkYear}
-              onChange={e => setCheckYear(+e.target.value)}
-              className="w-full bg-white/6 border border-white/10 rounded-xl px-3 py-2.5 text-white/80 text-sm text-center focus:outline-none focus:border-amber-400/40" />
-          </div>
-        </div>
-        {userProfile && (
-          <button onClick={() => setBirthYear(userProfile.birthYear)}
-            className="mt-2 text-amber-400/50 text-[10px] hover:text-amber-400/70 transition-colors">
-            Dùng năm sinh của tôi ({userProfile.birthYear}) →
-          </button>
-        )}
-        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-          onClick={handleCheck}
-          className="w-full mt-3 py-2.5 rounded-xl bg-amber-500/18 border border-amber-400/25 text-amber-200 text-sm font-medium">
-          Kiểm Tra →
-        </motion.button>
-      </div>
-
-      <AnimatePresence>
-        {result && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-2">
-
-            {/* Overall */}
-            <div className={`rounded-2xl border p-4 ${OVERALL_STYLE[result.overall] ?? ""}`}>
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <p className="text-[9px] text-white/30 tracking-widest uppercase">Tuổi âm {result.age} · Năm {checkYear}</p>
-                  <p className="text-white/85 text-sm font-semibold mt-0.5">
-                    {result.overall === "tốt" ? "✅" : result.overall === "nên tránh" ? "🚫" : result.overall === "cần cúng giải" ? "⚠️" : "🔵"} Năm này {result.overall}
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2 mb-3">
-                <Badge label="Kim Lâu" active={result.kimLau} color="red" />
-                <Badge label="Hoàng Ốc" active={result.hoangOc} color="amber" />
-                <Badge label="Tam Tai" active={result.tamTai} color="blue" />
-              </div>
-              {result.tips.map((t, i) => (
-                <p key={i} className="text-white/50 text-xs leading-relaxed">· {t}</p>
-              ))}
-            </div>
-
-            {/* Kết hôn / Xây nhà */}
-            <div className="grid grid-cols-2 gap-2">
-              <AnalysisCard icon="💍" title="Kết Hôn" good={result.ketHon.good} reason={result.ketHon.reason} />
-              <AnalysisCard icon="🏗️" title="Xây Nhà" good={result.xayNha.good} reason={result.xayNha.reason} />
-            </div>
-
-            {/* Năm tốt gần nhất */}
-            <div className="rounded-2xl border border-white/8 bg-white/3 p-4">
-              <p className="text-[10px] text-white/30 tracking-widest uppercase mb-3">Năm Tốt Sắp Tới</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-[9px] text-green-400/60 uppercase tracking-widest mb-1.5">💍 Kết hôn</p>
-                  {goodKetHon.map(y => <p key={y} className="text-white/65 text-xs">· {y}</p>)}
-                </div>
-                <div>
-                  <p className="text-[9px] text-green-400/60 uppercase tracking-widest mb-1.5">🏗️ Xây nhà</p>
-                  {goodXayNha.map(y => <p key={y} className="text-white/65 text-xs">· {y}</p>)}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-// ─── 3. Ngày tốt trong tháng ─────────────────────────────────
-
-function GoodDaysFinder() {
-  const today = new Date();
-  const [month, setMonth] = useState(today.getMonth() + 1);
-  const [year,  setYear]  = useState(today.getFullYear());
-  const [days,  setDays]  = useState<number[]>([]);
-  const [checked, setChecked] = useState(false);
-
-  const handleFind = useCallback(() => {
-    const good = getGoodDaysInMonth(month, year);
-    setDays(good);
-    setChecked(true);
-  }, [month, year]);
-
-  const MONTHS = ["Tháng 1","Tháng 2","Tháng 3","Tháng 4","Tháng 5","Tháng 6",
-                  "Tháng 7","Tháng 8","Tháng 9","Tháng 10","Tháng 11","Tháng 12"];
-
-  return (
-    <div className="mx-4 mt-3 flex flex-col gap-3">
-      <div className="rounded-2xl border border-white/8 bg-white/3 p-4">
-        <p className="text-[10px] text-white/35 tracking-widest uppercase mb-3">📆 Ngày Tốt Trong Tháng</p>
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <label className="text-[10px] text-white/30 mb-1 block">Tháng</label>
-            <select value={month} onChange={e => setMonth(+e.target.value)}
-              className="w-full bg-white/6 border border-white/10 rounded-xl px-3 py-2.5 text-white/80 text-sm focus:outline-none focus:border-amber-400/40 appearance-none text-center">
-              {MONTHS.map((m, i) => <option key={i} value={i+1} className="bg-[#0B0F1A]">{m}</option>)}
-            </select>
-          </div>
-          <div className="flex-1">
-            <label className="text-[10px] text-white/30 mb-1 block">Năm</label>
-            <input type="number" min={2024} max={2035} value={year}
-              onChange={e => setYear(+e.target.value)}
-              className="w-full bg-white/6 border border-white/10 rounded-xl px-3 py-2.5 text-white/80 text-sm text-center focus:outline-none focus:border-amber-400/40" />
-          </div>
-        </div>
-        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-          onClick={handleFind}
-          className="w-full mt-3 py-2.5 rounded-xl bg-amber-500/18 border border-amber-400/25 text-amber-200 text-sm font-medium">
-          Tìm Ngày Tốt →
-        </motion.button>
-      </div>
-
-      <AnimatePresence>
-        {checked && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-            {days.length === 0 ? (
-              <div className="rounded-2xl border border-white/8 bg-white/3 px-4 py-5 text-center">
-                <p className="text-white/40 text-sm">Không có ngày đặc biệt tốt trong tháng này</p>
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-amber-500/15 bg-amber-900/8 p-4">
-                <p className="text-[10px] text-amber-400/55 tracking-widest uppercase mb-3">
-                  ✨ {days.length} Ngày Tốt — {MONTHS[month-1]} {year}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {days.map(d => {
-                    const info = getDayInfo(d, month, year);
-                    return (
-                      <div key={d} className="rounded-xl border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-center min-w-[56px]">
-                        <p className="text-amber-200 text-base font-bold">{d}</p>
-                        <p className="text-amber-400/60 text-[9px] mt-0.5">{info.truc}</p>
-                        <div className="flex justify-center gap-0.5 mt-0.5">
-                          {[1,2,3,4,5].map(i => (
-                            <span key={i} className={`text-[8px] ${i <= info.starCount ? "text-amber-400" : "text-white/10"}`}>★</span>
+        {goodDays.length === 0 ? (
+          <p className="text-center py-8 text-gray-500 text-sm">Không có ngày tốt tháng này</p>
+        ) : (
+          <div className="divide-y divide-white/4">
+            {goodDays.map(({ day, info }) => (
+              <div key={day}>
+                <button
+                  className="w-full px-4 py-3 flex items-center justify-between active:bg-white/4"
+                  onClick={() => setExpanded(expanded === day ? null : day)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold"
+                      style={{ background: info.isTot ? "rgba(34,197,94,0.15)" : "rgba(234,179,8,0.15)", color: info.isTot ? "#22c55e" : "#eab308" }}>
+                      {day}
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm text-white">{info.canChiDay}</p>
+                      <p className="text-xs text-gray-400">{info.lunarDate} · Trực {info.truc.ten}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-0.5">
+                      {[1,2,3,4,5].map(i => (
+                        <span key={i} className={"text-xs " + (i <= info.rating[purpose] ? "text-yellow-400" : "text-gray-700")}>★</span>
+                      ))}
+                    </div>
+                    <span className="text-gray-600 text-xs">{expanded===day?"▲":"▼"}</span>
+                  </div>
+                </button>
+                <AnimatePresence>
+                  {expanded === day && (
+                    <motion.div initial={{ height:0, opacity:0 }} animate={{ height:"auto", opacity:1 }} exit={{ height:0, opacity:0 }} className="overflow-hidden px-4 pb-3">
+                      {info.saoTot.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-2">
+                          {info.saoTot.slice(0,4).map(s => (
+                            <span key={s.id} className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-300 border border-yellow-500/20">{s.name}</span>
                           ))}
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <p className="text-white/25 text-[10px] mt-3 leading-relaxed">
-                  * Dựa theo 12 Trực (Thành, Khai, Định, Mãn, Kiến). Vẫn nên kết hợp xem tuổi và Can Chi ngày cho việc quan trọng.
-                </p>
+                      )}
+                      <p className="text-xs text-gray-400">{info.summary}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-            )}
-          </motion.div>
+            ))}
+          </div>
         )}
-      </AnimatePresence>
-    </div>
+      </div>
+    </motion.div>
   );
 }
 
-// ─── Small helpers ────────────────────────────────────────────
+function DoiNgayTool() {
+  const now = new Date();
+  const [day,   setDay]   = useState(now.getDate());
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [year,  setYear]  = useState(now.getFullYear());
+  const targetDate = useMemo(() => new Date(year, month - 1, day), [day, month, year]);
 
-function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <p className="text-[9px] text-white/25 tracking-widest uppercase mb-0.5">{label}</p>
-      <p className="text-white/75 text-xs font-medium">{value}</p>
-    </div>
+    <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} className="flex flex-col gap-3 pt-2">
+      <div className="rounded-2xl border border-white/8 p-4" style={{ background: "rgba(15,20,40,0.9)" }}>
+        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Chọn Ngày Dương Lịch</p>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label:"Ngày", val:day, set:setDay, min:1, max:31 },
+            { label:"Tháng", val:month, set:setMonth, min:1, max:12 },
+            { label:"Năm", val:year, set:setYear, min:1900, max:2100 },
+          ].map(({ label, val, set, min, max }) => (
+            <div key={label} className="flex flex-col items-center gap-1">
+              <p className="text-xs text-gray-500">{label}</p>
+              <div className="flex items-center gap-1">
+                <button className="w-7 h-7 rounded text-white border border-white/12 text-sm active:opacity-70" onClick={() => set((v: number) => Math.max(min, v-1))}>−</button>
+                <span className="w-10 text-center text-white text-sm font-bold">{val}</span>
+                <button className="w-7 h-7 rounded text-white border border-white/12 text-sm active:opacity-70" onClick={() => set((v: number) => Math.min(max, v+1))}>+</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <DayDetailPanel date={targetDate} />
+    </motion.div>
   );
 }
 
-function Badge({ label, active, color }: { label: string; active: boolean; color: "red" | "amber" | "blue" }) {
-  const styles = {
-    red:   active ? "border-red-400/40 bg-red-500/15 text-red-300"     : "border-white/8 bg-white/3 text-white/25",
-    amber: active ? "border-amber-400/40 bg-amber-500/15 text-amber-300" : "border-white/8 bg-white/3 text-white/25",
-    blue:  active ? "border-blue-400/40 bg-blue-500/15 text-blue-300"   : "border-white/8 bg-white/3 text-white/25",
-  };
-  return (
-    <span className={`text-[10px] font-medium border rounded-full px-2.5 py-0.5 ${styles[color]}`}>
-      {active ? "⚠ " : ""}{label}
-    </span>
-  );
-}
+function XemTuoiTool({ birthYear }: { birthYear?: number }) {
+  const [by, setBy] = useState(birthYear ?? 1990);
+  const curYear = new Date().getFullYear();
+  const [checkYear, setCheckYear] = useState(curYear);
+  const analysis = useMemo(() => analyzeAge(by, checkYear), [by, checkYear]);
 
-function AnalysisCard({ icon, title, good, reason }: { icon: string; title: string; good: boolean; reason: string }) {
   return (
-    <div className={`rounded-xl border p-3 ${good ? "border-green-500/20 bg-green-900/10" : "border-red-500/15 bg-red-900/8"}`}>
-      <p className="text-xs font-medium text-white/70 mb-1">{icon} {title}</p>
-      <p className={`text-[9px] font-bold mb-1 ${good ? "text-green-400" : "text-red-400"}`}>
-        {good ? "✅ Thuận lợi" : "⚠️ Cần cân nhắc"}
-      </p>
-      <p className="text-white/40 text-[9px] leading-relaxed">{reason}</p>
-    </div>
+    <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} className="flex flex-col gap-3 pt-2">
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { label:"Năm Sinh", val:by, set:setBy },
+          { label:"Năm Kiểm Tra", val:checkYear, set:setCheckYear },
+        ].map(({ label, val, set }) => (
+          <div key={label} className="rounded-2xl border border-white/8 p-3" style={{ background:"rgba(15,20,40,0.9)" }}>
+            <p className="text-xs text-gray-500 mb-2">{label}</p>
+            <div className="flex items-center gap-1 justify-center">
+              <button className="w-7 h-7 rounded text-white border border-white/12 text-sm active:opacity-70" onClick={() => set((v: number) => v-1)}>−</button>
+              <span className="w-14 text-center text-white font-bold">{val}</span>
+              <button className="w-7 h-7 rounded text-white border border-white/12 text-sm active:opacity-70" onClick={() => set((v: number) => v+1)}>+</button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-2xl border overflow-hidden" style={{ background: "rgba(15,20,40,0.9)", borderColor: analysis.overallColor + "44" }}>
+        <div className="px-4 py-3 border-b border-white/6 flex items-center justify-between">
+          <div>
+            <p className="text-xs text-gray-500 mb-0.5">Tuổi {analysis.age} · Năm {checkYear}</p>
+            <p className="text-lg font-bold" style={{ color: analysis.overallColor }}>{analysis.overall.toUpperCase()}</p>
+          </div>
+          <div className="w-14 h-14 rounded-full border-2 flex items-center justify-center text-2xl" style={{ borderColor: analysis.overallColor }}>
+            {analysis.overall === "tốt" ? "✅" : analysis.overall === "nên tránh" ? "🚫" : "⚠️"}
+          </div>
+        </div>
+        <div className="grid grid-cols-3 divide-x divide-white/6">
+          {[
+            { label:"Kim Lâu", val:analysis.kimLau },
+            { label:"Hoàng Ốc", val:analysis.hoangOc },
+            { label:"Tam Tai",  val:analysis.tamTai },
+          ].map(({ label, val }) => (
+            <div key={label} className="py-3 text-center">
+              <p className="text-lg">{val ? "⚠️" : "✅"}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{label}</p>
+              <p className={"text-xs font-medium mt-0.5 " + (val ? "text-red-400" : "text-emerald-400")}>{val ? "Có hạn" : "Không"}</p>
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 divide-x divide-white/6 border-t border-white/6">
+          {[
+            { label:"💍 Kết hôn", info:analysis.ketHon },
+            { label:"🏗 Xây nhà", info:analysis.xayNha },
+          ].map(({ label, info }) => (
+            <div key={label} className="px-3 py-3">
+              <p className="text-xs text-gray-500 mb-1">{label}</p>
+              <p className={"text-xs font-medium " + (info.good ? "text-emerald-400" : "text-red-400")}>
+                {info.good ? "✅ Thuận lợi" : "⚠️ " + info.reason}
+              </p>
+            </div>
+          ))}
+        </div>
+        <div className="px-4 py-3 border-t border-white/6">
+          {analysis.tips.map((tip: string, i: number) => (
+            <p key={i} className="text-xs text-gray-300 flex items-start gap-1.5 mb-1">
+              <span className="text-yellow-500 mt-0.5">•</span>{tip}
+            </p>
+          ))}
+        </div>
+      </div>
+    </motion.div>
   );
 }
