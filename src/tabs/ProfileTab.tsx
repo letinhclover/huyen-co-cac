@@ -1,5 +1,5 @@
 // ============================================================
-// ProfileTab.tsx — Hồ Sơ Bản Mệnh + Affiliate
+// ProfileTab.tsx — Hồ Sơ Bản Mệnh — Design System v5
 // ============================================================
 
 import { useState, useEffect } from "react";
@@ -8,31 +8,29 @@ import { buildUserProfile, getShopeeProduct, UserProfile } from "../utils/astrol
 
 interface ProfileTabProps {
   userProfile: UserProfile | null;
-  onProfileChange: (profile: UserProfile | null) => void;
+  onProfileChange: (p: UserProfile | null) => void;
 }
 
-const ELEMENT_STYLES: Record<string, { gradient: string; border: string; text: string; glow: string; icon: string }> = {
-  kim:  { gradient: "from-slate-400/15 to-slate-500/5",   border: "border-slate-400/20",   text: "text-slate-300",   glow: "bg-slate-400/10",   icon: "🪙" },
-  moc:  { gradient: "from-emerald-500/15 to-green-500/5", border: "border-emerald-500/20", text: "text-emerald-400", glow: "bg-emerald-500/10", icon: "🌳" },
-  thuy: { gradient: "from-blue-500/15 to-cyan-500/5",     border: "border-blue-400/20",    text: "text-blue-400",    glow: "bg-blue-500/10",    icon: "💧" },
-  hoa:  { gradient: "from-red-500/15 to-orange-500/5",    border: "border-red-400/20",     text: "text-red-400",     glow: "bg-red-500/10",     icon: "🔥" },
-  tho:  { gradient: "from-amber-600/15 to-yellow-500/5",  border: "border-amber-500/20",   text: "text-amber-400",   glow: "bg-amber-500/10",   icon: "🌏" },
+const ELEMENT_ICON: Record<string,string> = {
+  kim:"🪙", moc:"🌿", thuy:"💧", hoa:"🔥", tho:"⛰️"
+};
+const ELEMENT_LABEL: Record<string,string> = {
+  kim:"Kim", moc:"Mộc", thuy:"Thủy", hoa:"Hỏa", tho:"Thổ"
+};
+const ELEMENT_COLOR: Record<string,string> = {
+  kim:"#94a3b8", moc:"#22c55e", thuy:"#3b82f6", hoa:"#ef4444", tho:"#f59e0b"
 };
 
 export function ProfileTab({ userProfile, onProfileChange }: ProfileTabProps) {
-  const [inputDay,  setInputDay]  = useState("");
-  const [inputMonth,setInputMonth]= useState("");
-  const [inputYear, setInputYear] = useState("");
-  const [error, setError] = useState("");
-  const [isEditing, setIsEditing] = useState(!userProfile);
-  const [justSaved, setJustSaved] = useState(false);
+  const [inputDay,   setInputDay]   = useState("");
+  const [inputMonth, setInputMonth] = useState("");
+  const [inputYear,  setInputYear]  = useState("");
+  const [error,      setError]      = useState("");
+  const [isEditing,  setIsEditing]  = useState(!userProfile);
+  const [justSaved,  setJustSaved]  = useState(false);
 
   useEffect(() => {
-    if (userProfile) {
-      setInputYear(String(userProfile.birthYear));
-      setIsEditing(false);
-    }
-    // Load saved dob
+    if (userProfile) { setInputYear(String(userProfile.birthYear)); setIsEditing(false); }
     try {
       const dob = JSON.parse(localStorage.getItem("huyen_co_cac_dob") ?? "null");
       if (dob) { setInputDay(String(dob.day)); setInputMonth(String(dob.month)); }
@@ -40,301 +38,152 @@ export function ProfileTab({ userProfile, onProfileChange }: ProfileTabProps) {
   }, [userProfile]);
 
   const handleSave = () => {
-    const year  = parseInt(inputYear,  10);
-    const month = parseInt(inputMonth, 10);
-    const day   = parseInt(inputDay,   10);
-    if (isNaN(year) || year < 1920 || year > new Date().getFullYear()) {
-      setError("Vui lòng nhập năm sinh hợp lệ (1920 đến nay)"); return;
+    const y = parseInt(inputYear, 10);
+    if (isNaN(y) || y < 1900 || y > 2020) {
+      setError("Năm sinh không hợp lệ (1900–2020)"); return;
     }
     setError("");
-    const profile = buildUserProfile(year);
-    localStorage.setItem("huyen_co_cac_birth_year", String(year));
-    // Lưu ngày tháng nếu có (dùng cho Thần Số Học)
-    if (!isNaN(day) && !isNaN(month) && day >= 1 && day <= 31 && month >= 1 && month <= 12) {
-      localStorage.setItem("huyen_co_cac_dob", JSON.stringify({ day, month, year }));
-    }
+    const profile = buildUserProfile(y);
     onProfileChange(profile);
+    try {
+      localStorage.setItem("huyen_co_cac_birth_year", String(y));
+      const d = parseInt(inputDay,10), m = parseInt(inputMonth,10);
+      if (!isNaN(d) && !isNaN(m) && d>=1&&d<=31&&m>=1&&m<=12)
+        localStorage.setItem("huyen_co_cac_dob", JSON.stringify({ day:d, month:m, year:y }));
+    } catch { /* ignore */ }
     setIsEditing(false);
     setJustSaved(true);
     setTimeout(() => setJustSaved(false), 2000);
   };
 
-  const handleReset = () => {
-    localStorage.removeItem("huyen_co_cac_birth_year");
-    localStorage.removeItem("huyen_co_cac_dob");
-    onProfileChange(null);
-    setInputDay(""); setInputMonth(""); setInputYear("");
-    setIsEditing(true);
-  };
-
-  const elementStyle = userProfile ? (ELEMENT_STYLES[userProfile.element] ?? ELEMENT_STYLES["tho"]) : null;
-  const shopeeProduct = userProfile ? getShopeeProduct(userProfile.element) : null;
+  const shopee = userProfile ? getShopeeProduct(userProfile.element) : null;
+  const elColor = userProfile ? ELEMENT_COLOR[userProfile.element] ?? "var(--gold)" : "var(--gold)";
 
   return (
-    <div className="min-h-full px-4 pt-6 pb-8 flex flex-col gap-5">
-      {/* Header */}
-      <div>
-        <p className="text-[10px] text-amber-400/60 tracking-[0.35em] uppercase mb-1">Cá Nhân Hóa</p>
-        <h1
-          className="text-2xl font-bold text-white/90"
-          style={{ fontFamily: "'Playfair Display', serif" }}
-        >
-          Hồ Sơ Bản Mệnh
-        </h1>
-      </div>
-
-      {/* Input form */}
-      <AnimatePresence mode="wait">
-        {isEditing ? (
-          <motion.div
-            key="form"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-lg px-5 py-5 flex flex-col gap-4"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-xl">
-                ✨
-              </div>
+    <div className="px-4 pt-4 flex flex-col gap-3">
+      {/* Profile card */}
+      {!isEditing && userProfile ? (
+        <motion.div initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} className="card overflow-hidden">
+          {/* Color band */}
+          <div className="h-1.5" style={{ background: `linear-gradient(90deg, ${elColor}, ${elColor}88)` }} />
+          <div className="p-5">
+            <div className="flex items-start justify-between mb-4">
               <div>
-                <p className="text-white/85 text-sm font-medium">Nhập Ngày Sinh Dương Lịch</p>
-                <p className="text-white/35 text-xs">Ngày + tháng giúp tính Thần Số Học chính xác hơn</p>
-              </div>
-            </div>
-
-            {/* Day / Month row */}
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <p className="text-[10px] text-white/30 mb-1">Ngày <span className="text-white/20">(tùy chọn)</span></p>
-                <input type="number" min={1} max={31} value={inputDay}
-                  onChange={e => setInputDay(e.target.value)} placeholder="1-31"
-                  className="w-full rounded-xl border border-white/10 bg-white/6 px-3 py-2.5 text-white/80 text-sm text-center focus:outline-none focus:border-amber-400/40" />
-              </div>
-              <div className="flex-1">
-                <p className="text-[10px] text-white/30 mb-1">Tháng <span className="text-white/20">(tùy chọn)</span></p>
-                <input type="number" min={1} max={12} value={inputMonth}
-                  onChange={e => setInputMonth(e.target.value)} placeholder="1-12"
-                  className="w-full rounded-xl border border-white/10 bg-white/6 px-3 py-2.5 text-white/80 text-sm text-center focus:outline-none focus:border-amber-400/40" />
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <div className="flex-1 relative">
-                <input
-                  type="number"
-                  value={inputYear}
-                  onChange={(e) => { setInputYear(e.target.value); setError(""); }}
-                  onKeyDown={(e) => e.key === "Enter" && handleSave()}
-                  placeholder="Năm sinh VD: 1998"
-                  min={1920}
-                  max={new Date().getFullYear()}
-                  className="w-full rounded-xl bg-white/8 border border-white/10 text-white placeholder-white/20 text-lg font-light px-4 py-3 outline-none focus:border-amber-500/40 focus:bg-white/10 transition-all tracking-widest"
-                />
-              </div>
-              <motion.button
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={handleSave}
-                className="rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-300 font-medium px-5 py-3 hover:bg-amber-500/30 transition-colors"
-              >
-                Xem Mệnh
-              </motion.button>
-            </div>
-
-            <AnimatePresence>
-              {error && (
-                <motion.p
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="text-red-400/80 text-xs"
-                >
-                  {error}
-                </motion.p>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="saved-bar"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            className="rounded-2xl border border-white/8 bg-white/3 px-4 py-3 flex items-center justify-between"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-white/30 text-sm">Năm sinh:</span>
-              <span className="text-white/80 text-sm font-medium tracking-widest">{userProfile?.birthYear}</span>
-            </div>
-            <button
-              onClick={() => setIsEditing(true)}
-              className="text-amber-400/60 text-xs hover:text-amber-400/90 transition-colors"
-            >
-              Chỉnh sửa
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Destiny card */}
-      <AnimatePresence>
-        {userProfile && elementStyle && (
-          <motion.div
-            key="destiny"
-            initial={{ opacity: 0, y: 20, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ type: "spring", damping: 20 }}
-          >
-            {/* Just saved toast */}
-            <AnimatePresence>
-              {justSaved && (
-                <motion.div
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  className="mb-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs text-center py-2 px-4"
-                >
-                  ✓ Đã lưu Bản Mệnh của bạn
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Main destiny card */}
-            <div className={`rounded-3xl border ${elementStyle.border} bg-gradient-to-br ${elementStyle.gradient} backdrop-blur-lg overflow-hidden`}>
-              {/* Top glow accent */}
-              <div className={`h-1 w-full ${elementStyle.glow}`} />
-
-              <div className="px-5 pt-5 pb-4">
-                {/* Element icon + label */}
-                <div className="flex items-center gap-3 mb-4">
-                  <div className={`w-14 h-14 rounded-2xl ${elementStyle.glow} border ${elementStyle.border} flex items-center justify-center text-3xl`}>
-                    {elementStyle.icon}
-                  </div>
+                <p className="section-label mb-1">Bản Mệnh</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-3xl">{ELEMENT_ICON[userProfile.element] ?? "✦"}</span>
                   <div>
-                    <p className="text-[10px] text-white/30 tracking-widest uppercase">Bản Mệnh Ngũ Hành</p>
-                    <p className={`text-xl font-bold ${elementStyle.text}`}
-                       style={{ fontFamily: "'Playfair Display', serif" }}>
-                      Mệnh {userProfile.elementName}
+                    <p className="text-xl font-bold font-display" style={{ color: elColor }}>
+                      {ELEMENT_LABEL[userProfile.element]} {userProfile.element === "kim" ? "(Kim)" : ""}
                     </p>
-                  </div>
-                </div>
-
-                {/* Destiny name */}
-                <div className="rounded-2xl bg-white/5 border border-white/8 px-4 py-3 mb-4">
-                  <p className="text-[10px] text-white/25 tracking-widest uppercase mb-1">Nạp Âm</p>
-                  <p className="text-white/80 text-sm font-medium">{userProfile.destinyName}</p>
-                </div>
-
-                {/* Can Chi grid */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl bg-white/4 border border-white/6 px-3 py-2.5">
-                    <p className="text-[10px] text-white/25 tracking-widest uppercase mb-0.5">Can Chi Năm</p>
-                    <p className={`text-base font-semibold ${elementStyle.text}`}>{userProfile.canChiYear}</p>
-                  </div>
-                  <div className="rounded-xl bg-white/4 border border-white/6 px-3 py-2.5">
-                    <p className="text-[10px] text-white/25 tracking-widest uppercase mb-0.5">Năm Sinh</p>
-                    <p className="text-base font-semibold text-white/70">{userProfile.birthYear}</p>
+                    <p className="text-sm" style={{ color:"var(--text-muted)" }}>{userProfile.destinyName}</p>
                   </div>
                 </div>
               </div>
+              <button onClick={() => setIsEditing(true)} className="btn-ghost text-xs px-3 py-1.5 rounded-xl">
+                ✎ Sửa
+              </button>
+            </div>
 
-              {/* Element personality */}
-              <div className="mx-5 mb-5">
-                <ElementPersonality element={userProfile.element} />
+            {/* Info grid */}
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label:"Năm sinh",  val: String(userProfile.birthYear) },
+                { label:"Can Chi",   val: userProfile.canChiYear },
+                { label:"Cung Phi",  val: String(userProfile.canIndex) },
+              ].map(({ label, val }) => (
+                <div key={label} className="rounded-xl p-3 text-center"
+                  style={{ background:"var(--bg-elevated)", border:"1px solid var(--border-subtle)" }}>
+                  <p className="section-label mb-1">{label}</p>
+                  <p className="font-bold text-sm" style={{ color:"var(--text-primary)" }}>{val}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Lucky info */}
+            <div className="mt-3 rounded-xl p-3"
+              style={{ background:"var(--gold-bg)", border:"1px solid var(--gold-border)" }}>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <p className="section-label mb-0.5">Mệnh</p>
+                  <p className="text-sm font-medium" style={{ color:"var(--text-primary)" }}>{userProfile.destinyName.split(" — ")[0]}</p>
+                </div>
+                <div>
+                  <p className="section-label mb-0.5">Hành</p>
+                  <p className="font-bold text-sm" style={{ color:"var(--gold)" }}>{userProfile.elementName} {userProfile.elementEmoji}</p>
+                </div>
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* Affiliate product section */}
-      <AnimatePresence>
-        {userProfile && shopeeProduct && (
-          <motion.div
-            key="shopee"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ delay: 0.15 }}
-            className="rounded-3xl border border-orange-500/20 bg-gradient-to-br from-orange-500/8 to-rose-500/5 backdrop-blur-lg overflow-hidden"
-          >
-            {/* Header */}
-            <div className="px-5 pt-4 pb-3 border-b border-white/5 flex items-center gap-2">
-              <span className="text-lg">🛍️</span>
+            {justSaved && (
+              <motion.p initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+                className="text-center text-sm mt-2" style={{ color:"var(--accent-emerald)" }}>
+                ✓ Đã lưu bản mệnh
+              </motion.p>
+            )}
+          </div>
+        </motion.div>
+      ) : (
+        /* Input form */
+        <motion.div initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} className="card p-5">
+          <h2 className="font-display font-bold text-lg mb-1" style={{ color:"var(--text-primary)" }}>
+            Thiết Lập Bản Mệnh
+          </h2>
+          <p className="text-sm mb-4" style={{ color:"var(--text-muted)" }}>
+            Nhập năm sinh để cá nhân hóa toàn bộ ứng dụng
+          </p>
+
+          <div className="space-y-3">
+            <div>
+              <label className="section-label block mb-1.5">Năm Sinh *</label>
+              <input type="number" placeholder="1990" value={inputYear}
+                onChange={e => setInputYear(e.target.value)}
+                className="w-full rounded-xl px-4 py-3 text-lg font-bold outline-none transition-all"
+                style={{ background:"var(--bg-elevated)", border:`1px solid ${error?"var(--accent-red)":"var(--border-medium)"}`, color:"var(--text-primary)" }} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <p className="text-[10px] text-orange-400/60 tracking-widest uppercase">Gợi Ý Phong Thủy</p>
-                <p className="text-white/70 text-sm font-medium">Dành riêng cho Mệnh {userProfile.elementName}</p>
+                <label className="section-label block mb-1.5">Ngày (tuỳ chọn)</label>
+                <input type="number" placeholder="15" value={inputDay}
+                  onChange={e => setInputDay(e.target.value)}
+                  className="w-full rounded-xl px-4 py-3 outline-none"
+                  style={{ background:"var(--bg-elevated)", border:"1px solid var(--border-medium)", color:"var(--text-primary)" }} />
+              </div>
+              <div>
+                <label className="section-label block mb-1.5">Tháng (tuỳ chọn)</label>
+                <input type="number" placeholder="6" value={inputMonth}
+                  onChange={e => setInputMonth(e.target.value)}
+                  className="w-full rounded-xl px-4 py-3 outline-none"
+                  style={{ background:"var(--bg-elevated)", border:"1px solid var(--border-medium)", color:"var(--text-primary)" }} />
               </div>
             </div>
+            {error && <p className="text-sm" style={{ color:"var(--accent-red)" }}>{error}</p>}
+          </div>
 
-            <div className="px-5 pt-4 pb-4 flex flex-col gap-3">
-              {/* Product info */}
-              <div className="flex items-start gap-3">
-                <div className="w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-3xl flex-shrink-0">
-                  {shopeeProduct.emoji}
-                </div>
-                <div className="flex-1">
-                  <p className="text-white/85 text-sm font-medium mb-1">{shopeeProduct.name}</p>
-                  <p className="text-white/45 text-xs leading-relaxed">{shopeeProduct.description}</p>
-                </div>
-              </div>
-
-              {/* Price + CTA */}
-              <div className="flex items-center gap-3">
-                <span className="text-orange-400/70 text-sm font-medium">{shopeeProduct.price}</span>
-                <motion.a
-                  href={shopeeProduct.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="flex-1 rounded-xl bg-orange-500 text-white text-sm font-semibold text-center py-2.5 px-4 shadow-lg shadow-orange-500/20 hover:bg-orange-400 transition-colors"
-                >
-                  Mua trên Shopee 🛒
-                </motion.a>
-              </div>
-
-              <p className="text-white/20 text-[10px] text-center">
-                Đây là gợi ý dựa trên bản mệnh của bạn
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Reset button */}
-      {userProfile && !isEditing && (
-        <motion.button
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          onClick={handleReset}
-          className="text-white/15 text-xs text-center hover:text-white/30 transition-colors py-2"
-        >
-          Xóa dữ liệu và bắt đầu lại
-        </motion.button>
+          <div className="flex gap-2 mt-4">
+            {userProfile && (
+              <button onClick={() => setIsEditing(false)} className="btn-ghost flex-1 py-3">Huỷ</button>
+            )}
+            <motion.button whileTap={{ scale:0.97 }} onClick={handleSave}
+              className="btn-gold flex-1 py-3 rounded-2xl">
+              Lưu Bản Mệnh →
+            </motion.button>
+          </div>
+        </motion.div>
       )}
-    </div>
-  );
-}
 
-// ─── Element Personality Blurb ────────────────────────────────
-
-const ELEMENT_PERSONALITIES: Record<string, string> = {
-  kim:  "Bạn có tư duy logic sắc bén và khả năng đưa ra quyết định chính xác. Bạn trung thực và thẳng thắn — đôi khi hơi thẳng, nhưng mọi người luôn tin tưởng bạn vì vậy.",
-  moc:  "Bạn có trực giác tốt và khả năng thích nghi mạnh mẽ. Bạn kiên trì như cây — dù gió thổi vẫn bám chặt đất. Bạn rất hợp với công việc sáng tạo và cần sự phát triển dài hạn.",
-  thuy: "Bạn nhạy cảm, thấu cảm và khéo léo trong giao tiếp. Như nước — bạn biết cách lách qua mọi trở ngại mà không tạo ra xung đột. Bạn làm bình yên những người xung quanh.",
-  hoa:  "Bạn nhiệt huyết, đam mê và truyền cảm hứng cho người khác. Bạn là người đi đầu, không ngại thử thứ mới. Chỉ cần nhớ — lửa cần được kiểm soát để không đốt cháy chính mình nhé.",
-  tho:  "Bạn đáng tin cậy, kiên định và có tư duy thực tế. Bạn là người mọi người tìm đến khi cần lời khuyên ổn định. Bạn xây nền tảng vững chắc — ít hào nhoáng nhưng bền vững lâu dài.",
-};
-
-function ElementPersonality({ element }: { element: string }) {
-  const text = ELEMENT_PERSONALITIES[element] ?? ELEMENT_PERSONALITIES["tho"];
-  return (
-    <div className="rounded-xl bg-white/3 border border-white/5 px-4 py-3">
-      <p className="text-[10px] text-white/25 tracking-widest uppercase mb-1.5">Tính Cách Bản Mệnh</p>
-      <p className="text-white/55 text-xs leading-relaxed">{text}</p>
+      {/* Affiliate */}
+      {shopee && userProfile && (
+        <motion.a initial={{ opacity:0 }} animate={{ opacity:1 }} href={shopee.url} target="_blank" rel="noopener noreferrer"
+          className="card p-4 flex items-center gap-3 transition-opacity active:opacity-70">
+          <span className="text-3xl">{shopee.icon}</span>
+          <div className="flex-1">
+            <p className="section-label mb-0.5">Vật phẩm hợp mệnh {ELEMENT_LABEL[userProfile.element]}</p>
+            <p className="text-sm font-medium" style={{ color:"var(--text-primary)" }}>{shopee.name}</p>
+            <p className="text-xs mt-0.5" style={{ color:"var(--gold)" }}>Xem trên Shopee →</p>
+          </div>
+        </motion.a>
+      )}
     </div>
   );
 }
