@@ -1,322 +1,199 @@
 // ============================================================
-// almanac.ts — Lịch Vạn Niên Utilities
-// Kim Lâu · Hoàng Ốc · Tam Tai · Ngày tốt/xấu · Đổi ngày
+// almanac.ts — Lịch Vạn Niên (Powered by Lịch VN 2026 data)
+// Dữ liệu thật từ lichvn.pak: 12 Trực, 114 Sao, 6 Ngày Xấu
 // ============================================================
 
-import { solarToLunar, toJDN, getCanChiDay, getCanChiMonth, getCanChiYear, CAN, CHI } from "./astrology";
+import { toJDN, solarToLunar, getCanChiDay } from "./astrology";
+import {
+  NGAY_TRUC, SAO_TOT_XAU, NHI_THAP_BAT_TU,
+  type TrucInfo, type SaoInfo,
+} from "../data/lichvn-data";
 
 // ─── Types ───────────────────────────────────────────────────
 
-export interface AgeAnalysis {
-  age: number;
-  kimLau:   boolean;
-  hoangOc:  boolean;
-  tamTai:   boolean;
-  ketHon:   { good: boolean; reason: string };
-  xayNha:   { good: boolean; reason: string };
-  overall:  "tốt" | "trung bình" | "cần cúng giải" | "nên tránh";
-  overallColor: string;
-  tips: string[];
-}
-
-export interface DayInfo {
-  solarDate:  string;
-  lunarDate:  string;
-  canChiDay:  string;
-  canChiMonth: string;
-  canChiYear: string;
-  truc:       string;
-  trucMeaning: string;
-  goodFor:    string[];
-  badFor:     string[];
-  overallRating: 1 | 2 | 3 | 4 | 5;
-  starCount:  number;
-}
-
-export interface DateConversion {
-  solar: { day: number; month: number; year: number };
-  lunar: { day: number; month: number; year: number; isLeap: boolean };
-  canChiDay:   string;
-  canChiMonth: string;
-  canChiYear:  string;
-  weekday:     string;
-}
-
-// ─── Kim Lâu (tuổi xấu cho xây nhà) ─────────────────────────
-// Công thức: tuổi tính theo âm lịch, chia 10 lấy dư
-// Dư 1, 3, 6, 8 → Kim Lâu (Đại hạn)
-
-export function isKimLau(tuoi: number): boolean {
-  const r = tuoi % 10;
-  return [1, 3, 6, 8].includes(r);
-}
-
-// ─── Hoàng Ốc (tuổi cần cẩn thận khi xây) ───────────────────
-// Dư 4, 9 → Hoàng Ốc
-
-export function isHoangOc(tuoi: number): boolean {
-  const r = tuoi % 10;
-  return [4, 9].includes(r);
-}
-
-// ─── Tam Tai (3 năm hạn liên tiếp theo chi năm sinh) ─────────
-// Tý-Thìn-Thân hại Dần-Ngọ-Tuất
-// Sửu-Tỵ-Dậu hại Hợi-Mão-Mùi
-// Dần-Ngọ-Tuất hại Tý-Thìn-Thân
-// Hợi-Mão-Mùi hại Sửu-Tỵ-Dậu
-
-const TAM_TAI_GROUPS: Record<number, number[]> = {
-  0: [2, 6, 10], // Tý bị Tam Tai năm Dần, Ngọ, Tuất
-  4: [2, 6, 10], // Thìn
-  8: [2, 6, 10], // Thân
-  2: [0, 4, 8],  // Dần bị Tam Tai năm Tý, Thìn, Thân
-  6: [0, 4, 8],  // Ngọ
-  10: [0, 4, 8], // Tuất
-  1: [3, 7, 11], // Sửu bị năm Hợi, Mão, Mùi
-  5: [3, 7, 11], // Tỵ
-  9: [3, 7, 11], // Dậu
-  3: [1, 5, 9],  // Dần bị Sửu, Tỵ, Dậu
-  7: [1, 5, 9],  // Mùi
-  11: [1, 5, 9], // Hợi
-};
-
-export function isTamTai(chiNamSinh: number, chiNamHienTai: number): boolean {
-  const badYears = TAM_TAI_GROUPS[chiNamSinh] ?? [];
-  return badYears.includes(chiNamHienTai);
-}
-
-// ─── Phân tích tuổi toàn diện ─────────────────────────────────
-
-export function analyzeAge(
-  birthYear: number,
-  checkYear: number = new Date().getFullYear()
-): AgeAnalysis {
-  const age = checkYear - birthYear + 1; // tuổi âm lịch
-  const chiNamSinh = (birthYear - 4) % 12;
-  const chiNamHT   = (checkYear - 4) % 12;
-
-  const kimLau  = isKimLau(age);
-  const hoangOc = isHoangOc(age);
-  const tamTai  = isTamTai(chiNamSinh, chiNamHT);
-
-  // Kết hôn
-  let ketHon = { good: true, reason: "Năm này phù hợp để kết hôn." };
-  if (kimLau) {
-    ketHon = { good: false, reason: "Tuổi Kim Lâu — nên chọn năm khác hoặc cúng giải trước khi làm lễ." };
-  } else if (tamTai) {
-    ketHon = { good: false, reason: "Đang trong vòng Tam Tai — nên đợi qua hoặc làm lễ giải hạn." };
-  } else if (hoangOc) {
-    ketHon = { good: true, reason: "Tuổi Hoàng Ốc — có thể kết hôn nhưng nên chọn ngày tốt kỹ càng." };
-  }
-
-  // Xây nhà
-  let xayNha = { good: true, reason: "Năm này hợp để xây nhà hoặc mua nhà mới." };
-  if (kimLau) {
-    xayNha = { good: false, reason: "Tuổi Kim Lâu — không nên đứng tên xây nhà năm này." };
-  } else if (hoangOc) {
-    xayNha = { good: false, reason: "Tuổi Hoàng Ốc — nên nhờ người tuổi hợp đứng tên thay." };
-  } else if (tamTai) {
-    xayNha = { good: true, reason: "Tam Tai không ảnh hưởng trực tiếp đến xây nhà, nhưng nên chọn ngày khởi công kỹ." };
-  }
-
-  // Overall
-  let overall: AgeAnalysis["overall"] = "tốt";
-  let overallColor = "#16A34A";
-  const tips: string[] = [];
-
-  if (kimLau) {
-    overall = "nên tránh";
-    overallColor = "#DC2626";
-    tips.push("Tuổi Kim Lâu: tránh khởi công việc lớn, xây nhà, kết hôn trong năm nay.");
-    tips.push("Nếu bắt buộc, hãy nhờ thầy chọn ngày tốt và làm lễ cúng giải trước.");
-  } else if (hoangOc && tamTai) {
-    overall = "cần cúng giải";
-    overallColor = "#D97706";
-    tips.push("Vừa Hoàng Ốc vừa Tam Tai — nên làm lễ giải hạn đầu năm.");
-    tips.push("Các việc lớn nên nhờ người tuổi hợp đứng ra thực hiện thay.");
-  } else if (hoangOc) {
-    overall = "cần cúng giải";
-    overallColor = "#D97706";
-    tips.push("Tuổi Hoàng Ốc: cẩn thận sức khỏe và tài chính.");
-    tips.push("Việc xây nhà nên nhờ người tuổi khác đứng tên.");
-  } else if (tamTai) {
-    overall = "trung bình";
-    overallColor = "#2563EB";
-    tips.push("Tam Tai năm thứ " + (tamTai ? "này" : "?") + ": giữ thái độ bình tĩnh, tránh xung đột.");
-    tips.push("Sức khỏe cần chú ý, tránh phẫu thuật không cần thiết.");
-  } else {
-    tips.push("Năm này khá thuận lợi để thực hiện các kế hoạch lớn.");
-    tips.push("Vẫn nên chọn ngày tốt cho các việc quan trọng.");
-  }
-
-  return {
-    age, kimLau, hoangOc, tamTai,
-    ketHon, xayNha,
-    overall, overallColor, tips,
+export interface DayAnalysis {
+  solarDate:    string;
+  lunarDate:    string;
+  canChiDay:    string;
+  canChiMonth:  string;
+  canChiYear:   string;
+  truc:         TrucInfo;
+  saoTot:       SaoInfo[];
+  saoXau:       SaoInfo[];
+  saoBatTu:     typeof NHI_THAP_BAT_TU[0];
+  ngayXauList:  string[];
+  rating: {
+    xayDung:   number; // 1-5
+    kinhDoanh: number;
+    cuoiHoi:   number;
+    anTang:    number;
+    overall:   number;
   };
+  summary: string;
+  isTot:   boolean;
 }
 
-// ─── 12 Trực (Kiến, Trừ, Mãn, Bình, Định, Chấp, Phá, Nguy, Thành, Thu, Khai, Bế) ──
+export interface AgeAnalysis {
+  age:        number;
+  kimLau:     boolean;
+  hoangOc:    boolean;
+  tamTai:     boolean;
+  ketHon:     { good: boolean; reason: string };
+  xayNha:     { good: boolean; reason: string };
+  overall:    "tốt" | "trung bình" | "cần cúng giải" | "nên tránh";
+  overallColor: string;
+  tips:       string[];
+}
 
-const TRUC_LIST = ["Kiến","Trừ","Mãn","Bình","Định","Chấp","Phá","Nguy","Thành","Thu","Khai","Bế"];
+// ─── Core Calculations ────────────────────────────────────────
 
-const TRUC_DATA: Record<string, { meaning: string; good: string[]; bad: string[] }> = {
-  "Kiến": {
-    meaning: "Ngày xây dựng, thiết lập — tốt để khởi đầu.",
-    good: ["Khai trương", "Ký hợp đồng", "Cưới hỏi", "Nhập học"],
-    bad: ["Kiện tụng", "Phẫu thuật"],
-  },
-  "Trừ": {
-    meaning: "Ngày trừ khử, dọn dẹp — tốt để loại bỏ cái cũ.",
-    good: ["Dọn nhà", "Chia tay quan hệ xấu", "Cai nghiện", "Chữa bệnh"],
-    bad: ["Kết hôn", "Khai trương", "Ký hợp đồng"],
-  },
-  "Mãn": {
-    meaning: "Ngày đầy đủ, sung mãn — tốt cho hầu hết công việc.",
-    good: ["Khai trương", "Mua sắm", "Hội họp", "Đầu tư"],
-    bad: ["Tang lễ"],
-  },
-  "Bình": {
-    meaning: "Ngày bình ổn, an lành — tốt cho các việc thường ngày.",
-    good: ["Du lịch", "Gặp gỡ", "Học tập", "Sửa chữa"],
-    bad: ["Khởi công", "Đám tang"],
-  },
-  "Định": {
-    meaning: "Ngày ổn định, quyết định — tốt để chốt các việc quan trọng.",
-    good: ["Ký kết", "Hôn lễ", "Khai trương", "Mua nhà"],
-    bad: ["Xuất hành xa"],
-  },
-  "Chấp": {
-    meaning: "Ngày nắm giữ, bền vững — tốt cho việc lâu dài.",
-    good: ["Trồng cây", "Xây nhà", "Làm nông"],
-    bad: ["Xuất hành", "Đầu tư mạo hiểm"],
-  },
-  "Phá": {
-    meaning: "Ngày phá vỡ — nên tránh các việc quan trọng.",
-    good: ["Phá dỡ nhà cũ", "Kết thúc hợp đồng"],
-    bad: ["Khai trương", "Cưới hỏi", "Ký kết", "Mua sắm lớn"],
-  },
-  "Nguy": {
-    meaning: "Ngày nguy hiểm — cẩn thận trong mọi việc.",
-    good: ["Việc nhỏ thông thường"],
-    bad: ["Đi xa", "Leo trèo", "Phẫu thuật", "Đầu tư"],
-  },
-  "Thành": {
-    meaning: "Ngày thành công — cực kỳ tốt cho các khởi đầu.",
-    good: ["Khai trương", "Cưới hỏi", "Ký hợp đồng", "Nhập học", "Ra mắt sản phẩm"],
-    bad: ["Kiện tụng", "Khiếu nại"],
-  },
-  "Thu": {
-    meaning: "Ngày thu hoạch — tốt để hoàn thành và nhận kết quả.",
-    good: ["Thu tiền", "Nghiệm thu công trình", "Tổng kết"],
-    bad: ["Khởi công mới", "Phẫu thuật"],
-  },
-  "Khai": {
-    meaning: "Ngày khai mở — rất tốt để bắt đầu điều mới.",
-    good: ["Khai trương", "Ra mắt", "Khởi công", "Nhập học", "Xuất hành"],
-    bad: ["Tang lễ"],
-  },
-  "Bế": {
-    meaning: "Ngày đóng lại — không tốt cho khởi đầu.",
-    good: ["Chôn cất", "Kết thúc hợp đồng", "Đóng cửa hàng"],
-    bad: ["Khai trương", "Cưới hỏi", "Đầu tư"],
-  },
+function chiDayIdx(jdn: number): number {
+  return ((jdn + 1) % 12 + 12) % 12;
+}
+
+function chiMonthIdx(lunarMonth: number): number {
+  return ((lunarMonth + 1) % 12 + 12) % 12;
+}
+
+function getTruc(jdn: number, lunarMonth: number): TrucInfo {
+  const idx = ((chiDayIdx(jdn) - chiMonthIdx(lunarMonth)) % 12 + 12) % 12;
+  return NGAY_TRUC[idx] ?? NGAY_TRUC[0];
+}
+
+// 28 Sao — ref: JDN 2451549 (Jan 5 2000) = Sao Giác (idx 0)
+const NTBT_REF_JDN = 2451549;
+function getSaoBatTu(jdn: number) {
+  const idx = ((jdn - NTBT_REF_JDN) % 28 + 28) % 28;
+  return NHI_THAP_BAT_TU[idx];
+}
+
+function getSaosForDay(jdn: number, lunarMonth: number): { tot: SaoInfo[]; xau: SaoInfo[] } {
+  const cc  = getCanChiDay(jdn);
+  const can = cc.split(" ")[0];
+  const chi = cc.split(" ")[1] ?? "";
+  const mIdx = lunarMonth - 1;
+  const tot: SaoInfo[] = [];
+  const xau: SaoInfo[] = [];
+
+  for (const sao of SAO_TOT_XAU) {
+    const v = sao.byMonth[mIdx];
+    if (!v) continue;
+    if (v === can || v === chi || v === can + "_" + chi) {
+      const avg = (sao.xayDung + sao.kinhDoanh + sao.cuoiHoi + sao.anTang) / 4;
+      if (avg >= 3) tot.push(sao);
+      else xau.push(sao);
+    }
+  }
+  return { tot, xau };
+}
+
+const VANG_VONG: Record<number, string> = {
+  1:"Dần",2:"Tỵ",3:"Thân",4:"Hợi",5:"Mão",6:"Ngọ",7:"Dậu",8:"Tý",9:"Thìn",10:"Mùi",11:"Tuất",12:"Sửu",
+};
+const SAT_CHU: Record<number, string> = {
+  1:"Tỵ",2:"Tý",3:"Mùi",4:"Mão",5:"Thân",6:"Tuất",7:"Sửu",8:"Hợi",9:"Ngọ",10:"Dậu",11:"Dần",12:"Thìn",
+};
+const DUONG_CONG: Record<number, number[]> = {
+  1:[13],2:[11],3:[9],4:[7],5:[5],6:[3],7:[8,29],8:[27],9:[25],10:[23],11:[21],12:[19],
 };
 
-export function getTruc(jdn: number, lunarMonth: number): string {
-  // Trực tính theo Can Chi ngày + tháng âm lịch
-  const idx = (jdn + lunarMonth) % 12;
-  return TRUC_LIST[idx] ?? "Kiến";
+function getNgayXau(lunarDay: number, lunarMonth: number, chi: string): string[] {
+  const r: string[] = [];
+  if ([5,14,23].includes(lunarDay))        r.push("Nguyệt Kỵ");
+  if ([3,7,13,18,22,27].includes(lunarDay)) r.push("Tam Nương");
+  if (DUONG_CONG[lunarMonth]?.includes(lunarDay)) r.push("Dương Công Kỵ");
+  if (VANG_VONG[lunarMonth] === chi)       r.push("Vãng Vong");
+  if (SAT_CHU[lunarMonth] === chi)         r.push("Sát Chủ");
+  return r;
 }
 
-// ─── Rating ngày ──────────────────────────────────────────────
-
-const GOOD_TRUC  = ["Thành", "Khai", "Định", "Mãn", "Kiến"];
-const BAD_TRUC   = ["Phá", "Nguy", "Bế", "Trừ"];
-
-function getDayRating(truc: string): 1 | 2 | 3 | 4 | 5 {
-  if (["Thành", "Khai"].includes(truc))   return 5;
-  if (GOOD_TRUC.includes(truc))           return 4;
-  if (["Thu", "Chấp"].includes(truc))     return 3;
-  if (["Trừ", "Bình"].includes(truc))     return 2;
-  if (BAD_TRUC.includes(truc))            return 1;
-  return 3;
+function calcRating(
+  truc: TrucInfo, tot: SaoInfo[], xau: SaoInfo[],
+  ngayXau: string[], batTu: typeof NHI_THAP_BAT_TU[0]
+) {
+  const calc = (f: "xayDung"|"kinhDoanh"|"cuoiHoi"|"anTang") => {
+    let s = truc[f];
+    for (const t of tot) s += (t[f] >= 5 ? 1 : 0);
+    for (const x of xau) s = Math.max(0, s - 1);
+    s = Math.max(0, s - ngayXau.length);
+    if (batTu[f] >= 4) s += 1; else if (batTu[f] === 0) s = Math.max(0, s - 1);
+    return Math.min(5, Math.max(1, Math.round(s / 2)));
+  };
+  const xayDung   = calc("xayDung");
+  const kinhDoanh = calc("kinhDoanh");
+  const cuoiHoi   = calc("cuoiHoi");
+  const anTang    = calc("anTang");
+  return { xayDung, kinhDoanh, cuoiHoi, anTang, overall: Math.round((xayDung+kinhDoanh+cuoiHoi+anTang)/4) };
 }
 
-// ─── Full day info ────────────────────────────────────────────
+// ─── Public API ───────────────────────────────────────────────
 
-export function getDayInfo(day: number, month: number, year: number): DayInfo {
-  const lunar      = solarToLunar(day, month, year);
-  const jdn        = toJDN(day, month, year);
-  const canChiDay  = getCanChiDay(jdn);
-  const canChiM    = getCanChiMonth(month, year);
-  const canChiY    = getCanChiYear(year);
-  const truc       = getTruc(jdn, lunar.month);
-  const trucData   = TRUC_DATA[truc] ?? TRUC_DATA["Bình"];
-  const rating     = getDayRating(truc);
+export function analyzeDayFull(day: number, month: number, year: number): DayAnalysis {
+  const jdn   = toJDN(day, month, year);
+  const lunar = solarToLunar(day, month, year);
+  const cc    = getCanChiDay(jdn);
+  const chi   = cc.split(" ")[1] ?? "";
 
-  const lunarStr = `${lunar.isLeapMonth ? "Nhuận " : ""}${lunar.day}/${lunar.month}`;
+  const truc     = getTruc(jdn, lunar.month);
+  const { tot, xau } = getSaosForDay(jdn, lunar.month);
+  const saoBatTu = getSaoBatTu(jdn);
+  const ngayXau  = getNgayXau(lunar.day, lunar.month, chi);
+  const rating   = calcRating(truc, tot, xau, ngayXau, saoBatTu);
+
+  const isTot  = rating.overall >= 3 && ngayXau.length === 0;
+  const label  = truc.dinhGia === "tốt" ? "ngày tốt" : truc.dinhGia === "xấu" ? "ngày xấu" : "ngày bình thường";
+  let summary  = `Trực ${truc.ten} (${label})`;
+  if (tot.length > 0) summary += ` · ${tot.slice(0,2).map(s=>s.name).join(", ")}`;
+  if (ngayXau.length > 0) summary += ` · ⚠️ ${ngayXau.join(", ")}`;
 
   return {
     solarDate:   `${day}/${month}/${year}`,
-    lunarDate:   lunarStr,
-    canChiDay,
-    canChiMonth: canChiM,
-    canChiYear:  canChiY,
-    truc,
-    trucMeaning: trucData.meaning,
-    goodFor:     trucData.good,
-    badFor:      trucData.bad,
-    overallRating: rating,
-    starCount:   rating,
+    lunarDate:   `${lunar.day}/${lunar.month}${lunar.isLeapMonth?" nhuận":""} ${lunar.canChiYear}`,
+    canChiDay:   cc,
+    canChiMonth: lunar.canChiMonth,
+    canChiYear:  lunar.canChiYear,
+    truc, saoTot: tot, saoXau: xau, saoBatTu, ngayXauList: ngayXau, rating, summary, isTot,
   };
 }
 
-// ─── Đổi ngày dương → âm ─────────────────────────────────────
-
-export function solarToLunarFull(day: number, month: number, year: number): DateConversion {
-  const lunar   = solarToLunar(day, month, year);
-  const jdn     = toJDN(day, month, year);
-  const WEEKDAYS = ["Chủ Nhật","Thứ Hai","Thứ Ba","Thứ Tư","Thứ Năm","Thứ Sáu","Thứ Bảy"];
-  const weekday = WEEKDAYS[new Date(year, month - 1, day).getDay()];
-
-  return {
-    solar:       { day, month, year },
-    lunar:       { day: lunar.day, month: lunar.month, year: lunar.year, isLeap: lunar.isLeapMonth },
-    canChiDay:   getCanChiDay(jdn),
-    canChiMonth: getCanChiMonth(month, year),
-    canChiYear:  getCanChiYear(year),
-    weekday,
-  };
-}
-
-// ─── Tìm ngày tốt trong tháng ────────────────────────────────
-
-export function getGoodDaysInMonth(month: number, year: number): number[] {
-  const days: number[] = [];
+export function getGoodDaysInMonth(
+  month: number, year: number,
+  purpose: "xayDung"|"kinhDoanh"|"cuoiHoi"|"anTang"
+): Array<{ day: number; info: DayAnalysis }> {
   const daysInMonth = new Date(year, month, 0).getDate();
+  const result: Array<{ day: number; info: DayAnalysis }> = [];
   for (let d = 1; d <= daysInMonth; d++) {
-    const info = getDayInfo(d, month, year);
-    if (info.overallRating >= 4) days.push(d);
+    const info = analyzeDayFull(d, month, year);
+    if (info.rating[purpose] >= 3 && info.ngayXauList.length === 0) {
+      result.push({ day: d, info });
+    }
   }
-  return days;
+  return result;
 }
 
-// ─── Các năm tốt gần nhất để xây nhà / kết hôn ───────────────
+export function isKimLau(tuoi: number): boolean   { return [1,3,6,8].includes(tuoi % 10); }
+export function isHoangOc(tuoi: number): boolean  { return [4,9].includes(tuoi % 10); }
+export function isTamTai(birthYear: number, curYear: number): boolean {
+  const diff = ((curYear + 8) % 12 - (birthYear + 8) % 12 + 12) % 12;
+  return [0,1,2].includes(diff);
+}
 
-export function getGoodYears(
-  birthYear: number,
-  type: "xayNha" | "ketHon",
-  fromYear = new Date().getFullYear(),
-  count = 3
-): number[] {
-  const good: number[] = [];
-  let y = fromYear;
-  while (good.length < count) {
-    const a = analyzeAge(birthYear, y);
-    const ok = type === "xayNha" ? a.xayNha.good : a.ketHon.good;
-    if (ok) good.push(y);
-    y++;
-  }
-  return good;
+export function analyzeAge(birthYear: number, currentYear: number): AgeAnalysis {
+  const age       = currentYear - birthYear + 1;
+  const kimLau_   = isKimLau(age);
+  const hoangOc_  = isHoangOc(age);
+  const tamTai_   = isTamTai(birthYear, currentYear);
+  const tips: string[] = [];
+  let overall: AgeAnalysis["overall"] = "tốt";
+  if (tamTai_)   { overall = "nên tránh"; tips.push("Năm Tam Tai — nên hoãn xây nhà và kết hôn"); }
+  if (kimLau_)   { if (overall === "tốt") overall = "cần cúng giải"; tips.push("Tuổi Kim Lâu — cần cúng giải trước khi xây nhà"); }
+  if (hoangOc_)  { if (overall === "tốt") overall = "cần cúng giải"; tips.push("Tuổi Hoàng Ốc — nên xem kỹ trước việc lớn"); }
+  if (tips.length === 0) tips.push("Tuổi không có hạn lớn, thuận lợi");
+  const colorMap: Record<string,string> = { "tốt":"#22c55e","trung bình":"#eab308","cần cúng giải":"#f97316","nên tránh":"#ef4444" };
+  return {
+    age, kimLau:kimLau_, hoangOc:hoangOc_, tamTai:tamTai_,
+    ketHon: { good:!tamTai_&&!kimLau_, reason:tamTai_?"Năm Tam Tai":kimLau_?"Tuổi Kim Lâu":"Thuận lợi" },
+    xayNha: { good:!tamTai_&&!kimLau_, reason:tamTai_?"Năm Tam Tai":kimLau_?"Tuổi Kim Lâu":"Thuận lợi" },
+    overall, overallColor: colorMap[overall], tips,
+  };
 }
