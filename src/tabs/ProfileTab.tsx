@@ -20,6 +20,8 @@ const ELEMENT_STYLES: Record<string, { gradient: string; border: string; text: s
 };
 
 export function ProfileTab({ userProfile, onProfileChange }: ProfileTabProps) {
+  const [inputDay,  setInputDay]  = useState("");
+  const [inputMonth,setInputMonth]= useState("");
   const [inputYear, setInputYear] = useState("");
   const [error, setError] = useState("");
   const [isEditing, setIsEditing] = useState(!userProfile);
@@ -30,17 +32,27 @@ export function ProfileTab({ userProfile, onProfileChange }: ProfileTabProps) {
       setInputYear(String(userProfile.birthYear));
       setIsEditing(false);
     }
+    // Load saved dob
+    try {
+      const dob = JSON.parse(localStorage.getItem("huyen_co_cac_dob") ?? "null");
+      if (dob) { setInputDay(String(dob.day)); setInputMonth(String(dob.month)); }
+    } catch { /* ignore */ }
   }, [userProfile]);
 
   const handleSave = () => {
-    const year = parseInt(inputYear, 10);
+    const year  = parseInt(inputYear,  10);
+    const month = parseInt(inputMonth, 10);
+    const day   = parseInt(inputDay,   10);
     if (isNaN(year) || year < 1920 || year > new Date().getFullYear()) {
-      setError("Vui lòng nhập năm sinh hợp lệ (1920 đến nay)");
-      return;
+      setError("Vui lòng nhập năm sinh hợp lệ (1920 đến nay)"); return;
     }
     setError("");
     const profile = buildUserProfile(year);
     localStorage.setItem("huyen_co_cac_birth_year", String(year));
+    // Lưu ngày tháng nếu có (dùng cho Thần Số Học)
+    if (!isNaN(day) && !isNaN(month) && day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+      localStorage.setItem("huyen_co_cac_dob", JSON.stringify({ day, month, year }));
+    }
     onProfileChange(profile);
     setIsEditing(false);
     setJustSaved(true);
@@ -49,8 +61,9 @@ export function ProfileTab({ userProfile, onProfileChange }: ProfileTabProps) {
 
   const handleReset = () => {
     localStorage.removeItem("huyen_co_cac_birth_year");
+    localStorage.removeItem("huyen_co_cac_dob");
     onProfileChange(null);
-    setInputYear("");
+    setInputDay(""); setInputMonth(""); setInputYear("");
     setIsEditing(true);
   };
 
@@ -85,8 +98,24 @@ export function ProfileTab({ userProfile, onProfileChange }: ProfileTabProps) {
                 ✨
               </div>
               <div>
-                <p className="text-white/85 text-sm font-medium">Nhập Năm Sinh Dương Lịch</p>
-                <p className="text-white/35 text-xs">Để tính Can Chi và Bản Mệnh của bạn</p>
+                <p className="text-white/85 text-sm font-medium">Nhập Ngày Sinh Dương Lịch</p>
+                <p className="text-white/35 text-xs">Ngày + tháng giúp tính Thần Số Học chính xác hơn</p>
+              </div>
+            </div>
+
+            {/* Day / Month row */}
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <p className="text-[10px] text-white/30 mb-1">Ngày <span className="text-white/20">(tùy chọn)</span></p>
+                <input type="number" min={1} max={31} value={inputDay}
+                  onChange={e => setInputDay(e.target.value)} placeholder="1-31"
+                  className="w-full rounded-xl border border-white/10 bg-white/6 px-3 py-2.5 text-white/80 text-sm text-center focus:outline-none focus:border-amber-400/40" />
+              </div>
+              <div className="flex-1">
+                <p className="text-[10px] text-white/30 mb-1">Tháng <span className="text-white/20">(tùy chọn)</span></p>
+                <input type="number" min={1} max={12} value={inputMonth}
+                  onChange={e => setInputMonth(e.target.value)} placeholder="1-12"
+                  className="w-full rounded-xl border border-white/10 bg-white/6 px-3 py-2.5 text-white/80 text-sm text-center focus:outline-none focus:border-amber-400/40" />
               </div>
             </div>
 
@@ -97,7 +126,7 @@ export function ProfileTab({ userProfile, onProfileChange }: ProfileTabProps) {
                   value={inputYear}
                   onChange={(e) => { setInputYear(e.target.value); setError(""); }}
                   onKeyDown={(e) => e.key === "Enter" && handleSave()}
-                  placeholder="VD: 1998"
+                  placeholder="Năm sinh VD: 1998"
                   min={1920}
                   max={new Date().getFullYear()}
                   className="w-full rounded-xl bg-white/8 border border-white/10 text-white placeholder-white/20 text-lg font-light px-4 py-3 outline-none focus:border-amber-500/40 focus:bg-white/10 transition-all tracking-widest"
