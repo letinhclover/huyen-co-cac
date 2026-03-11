@@ -5,6 +5,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { solarToLunar } from "../utils/astrology";
+import { DayDetailPanel } from "./DayDetailPanel";
 
 interface CalendarBoardProps {
   currentDate: Date;
@@ -151,6 +152,9 @@ export function CalendarBoard({ currentDate }: CalendarBoardProps) {
           </div>
         </motion.div>
       </AnimatePresence>
+      <div className="mt-3 px-4">
+        <DayDetailPanel date={currentDate} />
+      </div>
     </div>
   );
 }
