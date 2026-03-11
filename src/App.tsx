@@ -1,6 +1,7 @@
 // ============================================================
-// App.tsx — Huyền Cơ Các Phase 3
-// 5 tabs: Lịch · AI · Gieo Quẻ · Tiện Ích · Bản Mệnh
+// App.tsx — Huyền Cơ Các Phase 5
+// Tabs: Lịch · Thầy · Tiện Ích · Xem Tuổi · Mệnh
+// Light / Dark mode · SEO ready
 // ============================================================
 
 import { useState, useEffect, useCallback } from "react";
@@ -11,121 +12,119 @@ import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { AiTab }            from "./tabs/AiTab";
 import { OracleTab }        from "./tabs/OracleTab";
 import { ProfileTab }       from "./tabs/ProfileTab";
-import { UtilsTab } from "./tabs/UtilsTab";
-import { TuviTab } from "./tabs/TuviTab";
+import { UtilsTab }         from "./tabs/UtilsTab";
+import { ThayTab }          from "./tabs/ThayTab";
+import { XemTuoiTab }       from "./tabs/XemTuoiTab";
+import { TuviTab }          from "./tabs/TuviTab";
 import { buildUserProfile, UserProfile } from "./utils/astrology";
 
-type TabId = "calendar" | "ai" | "oracle" | "utils" | "profile";
+type TabId = "calendar" | "thay" | "utils" | "tuoi" | "profile";
 
-const TABS = [
-  { id: "calendar" as TabId, label: "Lịch",     icon: "📅", activeIcon: "🗓️"  },
-  { id: "ai"       as TabId, label: "AI",        icon: "✨", activeIcon: "🌟"  },
-  { id: "oracle"   as TabId, label: "Quẻ",       icon: "🔮", activeIcon: "🔮"  },
-  { id: "utils"    as TabId, label: "Tiện Ích",  icon: "🔧", activeIcon: "⚙️"  },
-  { id: "profile"  as TabId, label: "Mệnh",      icon: "👤", activeIcon: "💫"  },
+const TABS: { id: TabId; icon: string; label: string }[] = [
+  { id:"calendar", icon:"📅", label:"Lịch"    },
+  { id:"thay",     icon:"🔮", label:"Hỏi Thầy"},
+  { id:"utils",    icon:"🗓", label:"Xem Ngày" },
+  { id:"tuoi",     icon:"👫", label:"Xem Tuổi"},
+  { id:"profile",  icon:"👤", label:"Bản Mệnh"},
 ];
-const TAB_ORDER: TabId[] = ["calendar", "ai", "oracle", "utils", "profile"];
+const TAB_ORDER = TABS.map(t => t.id);
 
 const pageVariants = {
-  initial: (dir: number) => ({ opacity: 0, x: dir > 0 ? 40 : -40 }),
-  animate: { opacity: 1, x: 0, transition: { type: "spring" as const, damping: 28, stiffness: 220 } },
-  exit:    (dir: number) => ({ opacity: 0, x: dir > 0 ? -40 : 40, transition: { duration: 0.16 } }),
+  initial: (dir: number) => ({ opacity:0, x: dir>0?32:-32 }),
+  animate: { opacity:1, x:0, transition:{ type:"spring" as const, damping:28, stiffness:220 } },
+  exit:    (dir: number) => ({ opacity:0, x: dir>0?-32:32, transition:{ duration:0.14 } }),
 };
 
 function startOfDay(d: Date) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
-function addDays(d: Date, n: number) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+function addDays(d: Date, n: number) { const r=new Date(d); r.setDate(r.getDate()+n); return r; }
 function isSameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
 }
 
 export default function App() {
-  const [activeTab,   setActiveTab]   = useState<TabId>("calendar");
-  const [prevTab,     setPrevTab]     = useState<TabId>("calendar");
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [viewDate,    setViewDate]    = useState<Date>(() => startOfDay(new Date()));
+  const [tab,     setTab]     = useState<TabId>("calendar");
+  const [prevTab, setPrevTab] = useState<TabId>("calendar");
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [viewDate,setViewDate]= useState<Date>(() => startOfDay(new Date()));
+  const [isDark,  setIsDark]  = useState(() => {
+    try { return localStorage.getItem("hcc_theme") !== "light"; } catch { return true; }
+  });
 
+  // Apply theme
+  useEffect(() => {
+    const html = document.documentElement;
+    if (isDark) { html.classList.add("dark"); html.classList.remove("light"); }
+    else        { html.classList.remove("dark"); html.classList.add("light"); }
+    try { localStorage.setItem("hcc_theme", isDark ? "dark" : "light"); } catch {}
+    // Update theme-color meta
+    const meta = document.querySelector("meta[name='theme-color']:not([media])");
+    if (!meta) {
+      const m = document.createElement("meta");
+      m.setAttribute("name","theme-color");
+      m.setAttribute("content", isDark ? "#080C18" : "#FEF9EE");
+      document.head.appendChild(m);
+    }
+  }, [isDark]);
+
+  // Load profile
   useEffect(() => {
     const saved = localStorage.getItem("huyen_co_cac_birth_year");
-    if (saved) {
-      const y = parseInt(saved, 10);
-      if (!isNaN(y)) setUserProfile(buildUserProfile(y));
-    }
+    if (saved) { const y=parseInt(saved,10); if (!isNaN(y)) setProfile(buildUserProfile(y)); }
   }, []);
 
-  const handleTabChange = useCallback((id: TabId) => {
-    if (id === activeTab) return;
-    setPrevTab(activeTab);
-    setActiveTab(id);
-  }, [activeTab]);
+  const changeTab = useCallback((id: TabId) => {
+    if (id === tab) return;
+    setPrevTab(tab); setTab(id);
+  }, [tab]);
 
-  const handleProfileChange = useCallback((p: UserProfile | null) => setUserProfile(p), []);
-  const handleSetupProfile  = useCallback(() => handleTabChange("profile"), [handleTabChange]);
-  const handlePrevDay       = useCallback(() => setViewDate(d => addDays(d, -1)), []);
-  const handleNextDay       = useCallback(() => {
-    setViewDate(d => {
-      const next = addDays(d, 1);
-      const max  = addDays(startOfDay(new Date()), 1);
-      return next > max ? d : next;
-    });
+  const dir = TAB_ORDER.indexOf(tab) > TAB_ORDER.indexOf(prevTab) ? 1 : -1;
+
+  const today = startOfDay(new Date());
+  const isToday = isSameDay(viewDate, today);
+
+  const handlePrev = useCallback(() => setViewDate(d => addDays(d,-1)), []);
+  const handleNext = useCallback(() => {
+    setViewDate(d => { const n=addDays(d,1); return n>addDays(today,1)?d:n; });
   }, []);
-  const handleGoToday = useCallback(() => setViewDate(startOfDay(new Date())), []);
-
-  const today     = startOfDay(new Date());
-  const isToday   = isSameDay(viewDate, today);
-  const canGoNext = !isSameDay(viewDate, addDays(today, 1));
-  const direction = TAB_ORDER.indexOf(activeTab) > TAB_ORDER.indexOf(prevTab) ? 1 : -1;
+  const goToday = useCallback(() => setViewDate(today), []);
 
   return (
-    <div className="relative min-h-screen max-w-md mx-auto flex flex-col overflow-hidden bg-[#080C18]">
-      <Background />
+    <div className="relative min-h-screen max-w-md mx-auto flex flex-col overflow-hidden"
+      style={{ background: "var(--bg-base)" }}>
 
+      {/* Background decoration */}
+      <Background isDark={isDark} />
+
+      {/* Header */}
       <AppHeader
-        activeTab={activeTab}
-        userProfile={userProfile}
-        viewDate={viewDate}
-        isToday={isToday}
-        canGoNext={canGoNext}
-        onPrevDay={handlePrevDay}
-        onNextDay={handleNextDay}
-        onGoToday={handleGoToday}
+        isDark={isDark} onToggleTheme={() => setIsDark(d => !d)}
+        tab={tab} viewDate={viewDate} isToday={isToday}
+        onPrev={handlePrev} onNext={handleNext} onToday={goToday}
       />
 
-      <main className="relative flex-1 overflow-y-auto overflow-x-hidden pb-24 scroll-smooth">
-        <AnimatePresence mode="wait" custom={direction}>
-          <motion.div
-            key={activeTab}
-            custom={direction}
-            variants={pageVariants}
-            initial="initial" animate="animate" exit="exit"
-            className="min-h-full"
-          >
-            {activeTab === "calendar" && (
-              <CalendarContent
-                viewDate={viewDate}
-                userProfile={userProfile}
-                onSetupProfile={handleSetupProfile}
-              />
+      {/* Main content */}
+      <main className="relative flex-1 overflow-y-auto overflow-x-hidden pb-24">
+        <AnimatePresence mode="wait" custom={dir}>
+          <motion.div key={tab} custom={dir} variants={pageVariants}
+            initial="initial" animate="animate" exit="exit" className="min-h-full">
+            {tab === "calendar" && (
+              <CalendarContent viewDate={viewDate} profile={profile}
+                onSetupProfile={() => changeTab("profile")} />
             )}
-            {activeTab === "ai" && (
-              <AiTab
-                date={viewDate}
-                userProfile={userProfile}
-                onSetupProfile={handleSetupProfile}
-              />
-            )}
-            {activeTab === "oracle" && <OracleTab />}
-            {activeTab === "utils" && (
-              <UtilsTab birthYear={userProfile?.birthYear} />
-            )}
-            {activeTab === "profile" && (
-              <div className="flex flex-col">
-                <ProfileTab userProfile={userProfile} onProfileChange={handleProfileChange} />
-                <div className="mx-4 mb-2 mt-2 flex items-center gap-2">
-                  <div className="flex-1 h-px bg-white/5" />
-                  <span className="text-[10px] text-white/20 tracking-[0.3em] uppercase">Tử Vi Trọn Đời</span>
-                  <div className="flex-1 h-px bg-white/5" />
+            {tab === "thay" && <ThayTab birthYear={profile?.birthYear} />}
+            {tab === "utils" && <UtilsTab birthYear={profile?.birthYear} />}
+            {tab === "tuoi"  && <XemTuoiTab birthYear={profile?.birthYear} />}
+            {tab === "profile" && (
+              <div>
+                <ProfileTab userProfile={profile} onProfileChange={setProfile} />
+                <div className="mx-4 mb-2 mt-4">
+                  <Divider label="Tử Vi Trọn Đời" />
                 </div>
-                <TuviTab birthYear={userProfile?.birthYear} />
+                <TuviTab birthYear={profile?.birthYear} />
+                <div className="mx-4 mb-2 mt-4">
+                  <Divider label="AI Luận Giải" />
+                </div>
+                <AiTab date={viewDate} userProfile={profile} onSetupProfile={() => {}} />
               </div>
             )}
           </motion.div>
@@ -133,169 +132,170 @@ export default function App() {
       </main>
 
       <PWAInstallPrompt />
-      <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
+      <BottomNav tab={tab} onTabChange={changeTab} />
     </div>
   );
 }
 
 // ─── Background ───────────────────────────────────────────────
-
-function Background() {
+function Background({ isDark }: { isDark: boolean }) {
   return (
-    <div className="fixed inset-0 max-w-md mx-auto pointer-events-none overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#0B0F1F] via-[#080C18] to-[#050810]" />
-      <div className="absolute inset-0 opacity-[0.025]"
-        style={{
-          backgroundImage: "linear-gradient(rgba(251,191,36,0.6) 1px,transparent 1px),linear-gradient(90deg,rgba(251,191,36,0.6) 1px,transparent 1px)",
-          backgroundSize: "60px 60px",
-        }} />
-      <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full bg-amber-500/4 blur-3xl" />
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-80 h-64 rounded-full bg-violet-900/8 blur-3xl" />
+    <div className="fixed inset-0 max-w-md mx-auto pointer-events-none overflow-hidden" aria-hidden>
+      {isDark ? (
+        <>
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0B0F1F] via-[#080C18] to-[#050810]" />
+          <div className="absolute inset-0 opacity-[0.025]"
+            style={{ backgroundImage:"linear-gradient(rgba(245,158,11,0.5) 1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,0.5) 1px,transparent 1px)", backgroundSize:"60px 60px" }} />
+          <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full opacity-5"
+            style={{ background:"radial-gradient(circle,#F59E0B 0%,transparent 70%)" }} />
+        </>
+      ) : (
+        <>
+          <div className="absolute inset-0" style={{ background:"var(--bg-base)" }} />
+          <div className="absolute inset-0 opacity-[0.03]"
+            style={{ backgroundImage:"linear-gradient(rgba(200,133,10,0.8) 1px,transparent 1px),linear-gradient(90deg,rgba(200,133,10,0.8) 1px,transparent 1px)", backgroundSize:"48px 48px" }} />
+          <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[400px] h-[400px] rounded-full opacity-[0.06]"
+            style={{ background:"radial-gradient(circle,#C8850A 0%,transparent 70%)" }} />
+        </>
+      )}
     </div>
   );
 }
 
 // ─── Header ───────────────────────────────────────────────────
-
-function AppHeader({ activeTab, userProfile, viewDate, isToday, canGoNext, onPrevDay, onNextDay, onGoToday }: {
-  activeTab: TabId; userProfile: UserProfile | null; viewDate: Date;
-  isToday: boolean; canGoNext: boolean;
-  onPrevDay: () => void; onNextDay: () => void; onGoToday: () => void;
+function AppHeader({ isDark, onToggleTheme, tab, viewDate, isToday, onPrev, onNext, onToday }: {
+  isDark: boolean; onToggleTheme: () => void;
+  tab: TabId; viewDate: Date; isToday: boolean;
+  onPrev: ()=>void; onNext: ()=>void; onToday: ()=>void;
 }) {
-  const showNav = activeTab === "calendar" || activeTab === "ai";
-  const label   = `${viewDate.getDate()}/${viewDate.getMonth() + 1}`;
+  const showNav = tab === "calendar";
 
   return (
-    <header className="relative z-20 px-4 pt-4 pb-2">
+    <header className="relative z-20 px-4 pt-4 pb-3 border-b"
+      style={{ background:"var(--header-bg)", backdropFilter:"blur(16px)", borderColor:"var(--border-subtle)" }}>
       <div className="flex items-center justify-between gap-2">
-        <div className="flex-shrink-0">
-          <h1 className="text-white/90 text-lg font-bold tracking-wide leading-none"
-            style={{ fontFamily: "'Playfair Display', serif" }}>
+        {/* Brand */}
+        <div>
+          <h1 className="font-display font-bold text-lg leading-none" style={{ color:"var(--text-primary)" }}>
             Huyền Cơ Các
           </h1>
-          <p className="text-amber-400/50 text-[10px] tracking-[0.25em] uppercase mt-0.5">
-            Lịch Vạn Niên · Tâm Linh
+          <p className="text-[10px] tracking-[0.2em] uppercase mt-0.5" style={{ color:"var(--text-muted)" }}>
+            Lịch · Phong Thủy · AI
           </p>
         </div>
 
+        {/* Day nav (calendar only) */}
         <AnimatePresence>
           {showNav && (
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-              className="flex items-center gap-0.5 rounded-2xl border border-white/8 bg-white/5 backdrop-blur px-1 py-1">
-              <NavBtn onClick={onPrevDay}>‹</NavBtn>
-              <motion.button whileTap={{ scale: 0.95 }} onClick={onGoToday}
-                className="flex flex-col items-center px-2 min-w-14">
-                <span className="text-white/75 text-xs font-semibold tabular-nums tracking-wide">{label}</span>
-                <AnimatePresence mode="wait">
-                  {isToday
-                    ? <motion.span key="t" initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                        className="text-amber-400/55 text-[9px] leading-none tracking-wider">Hôm nay</motion.span>
-                    : <motion.span key="g" initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                        className="text-white/25 text-[9px] leading-none">↩ Hôm nay</motion.span>
-                  }
-                </AnimatePresence>
-              </motion.button>
-              <NavBtn onClick={onNextDay} disabled={!canGoNext}>›</NavBtn>
+            <motion.div initial={{ opacity:0, scale:0.9 }} animate={{ opacity:1, scale:1 }} exit={{ opacity:0 }}
+              className="flex items-center gap-0.5 rounded-2xl px-1 py-1"
+              style={{ background:"var(--bg-elevated)", border:"1px solid var(--border-subtle)" }}>
+              <NavBtn onClick={onPrev}>‹</NavBtn>
+              <button onClick={onToday} className="flex flex-col items-center px-2.5 min-w-14">
+                <span className="font-semibold text-xs tabular-nums" style={{ color:"var(--text-primary)" }}>
+                  {viewDate.getDate()}/{viewDate.getMonth()+1}
+                </span>
+                <span className="text-[9px]" style={{ color: isToday?"var(--gold)":"var(--text-faint)" }}>
+                  {isToday ? "Hôm nay" : "↩ Hôm nay"}
+                </span>
+              </button>
+              <NavBtn onClick={onNext}>›</NavBtn>
             </motion.div>
           )}
         </AnimatePresence>
 
-        <div className="flex-shrink-0 min-w-14 flex justify-end">
-          <AnimatePresence>
-            {userProfile && (
-              <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
-                className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 backdrop-blur px-2.5 py-1.5">
-                <span className="text-sm">{userProfile.elementEmoji}</span>
-                <span className="text-white/45 text-[11px]">{userProfile.elementName}</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        {/* Theme toggle */}
+        <motion.button whileTap={{ scale:0.9 }} onClick={onToggleTheme}
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-lg"
+          style={{ background:"var(--bg-elevated)", border:"1px solid var(--border-subtle)" }}
+          aria-label={isDark ? "Chế độ sáng" : "Chế độ tối"}>
+          {isDark ? "☀️" : "🌙"}
+        </motion.button>
       </div>
     </header>
   );
 }
 
-function NavBtn({ onClick, disabled, children }: {
-  onClick: () => void; disabled?: boolean; children: React.ReactNode;
-}) {
+function NavBtn({ onClick, disabled, children }: { onClick:()=>void; disabled?:boolean; children:React.ReactNode }) {
   return (
-    <motion.button whileTap={{ scale: 0.82 }} onClick={onClick} disabled={disabled}
-      className={`w-8 h-8 flex items-center justify-center rounded-xl font-light text-xl transition-all
-        ${disabled ? "text-white/12 cursor-not-allowed" : "text-white/40 hover:text-white/80 hover:bg-white/8"}`}>
+    <motion.button whileTap={{ scale:0.85 }} onClick={onClick} disabled={disabled}
+      className="w-8 h-8 flex items-center justify-center rounded-xl text-xl font-light transition-all"
+      style={{ color: disabled?"var(--border-medium)":"var(--text-secondary)" }}>
       {children}
     </motion.button>
   );
 }
 
 // ─── Calendar Content ─────────────────────────────────────────
-
-function CalendarContent({ viewDate, userProfile, onSetupProfile }: {
-  viewDate: Date; userProfile: UserProfile | null; onSetupProfile: () => void;
+function CalendarContent({ viewDate, profile, onSetupProfile }: {
+  viewDate: Date; profile: UserProfile | null; onSetupProfile: ()=>void;
 }) {
   return (
     <div className="flex flex-col pb-4">
       <CalendarBoard currentDate={viewDate} />
       <Divider label="Năng Lượng Cá Nhân" />
-      <PersonalEnergy userProfile={userProfile} currentDate={viewDate} onSetupProfile={onSetupProfile} />
-      <Divider label="Khám Phá Thêm" />
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-        className="mx-4 grid grid-cols-2 gap-2">
-        <QuickCard emoji="✨" title="AI Luận Giải" desc="Hỏi AI về ngày hôm nay" onClick={onSetupProfile} tabHint="ai" />
-        <QuickCard emoji="🔧" title="Tiện Ích" desc="Đổi ngày, xem tuổi, ngày tốt" onClick={onSetupProfile} tabHint="utils" />
-      </motion.div>
+      <PersonalEnergy userProfile={profile} currentDate={viewDate} onSetupProfile={onSetupProfile} />
+      <Divider label="Khám Phá" />
+      <div className="mx-4 grid grid-cols-2 gap-2.5">
+        <QuickCard emoji="🔮" title="Hỏi Thầy Lão Đại" desc="64 quẻ Kinh Dịch + AI" />
+        <QuickCard emoji="📅" title="Xem Ngày Tốt" desc="18 mục đích, dữ liệu thật" />
+        <QuickCard emoji="👫" title="Xem Tuổi Hợp" desc="Cặp đôi & làm ăn" />
+        <QuickCard emoji="✨" title="AI Luận Giải" desc="Thần số học & vận số" />
+      </div>
     </div>
   );
 }
 
-function QuickCard({ emoji, title, desc }: {
-  emoji: string; title: string; desc: string; onClick: () => void; tabHint: string;
-}) {
+function QuickCard({ emoji, title, desc }: { emoji:string; title:string; desc:string }) {
   return (
-    <div className="rounded-2xl border border-white/8 bg-white/3 p-3 flex flex-col gap-1.5">
-      <span className="text-xl">{emoji}</span>
-      <p className="text-white/70 text-xs font-medium">{title}</p>
-      <p className="text-white/30 text-[10px] leading-relaxed">{desc}</p>
+    <div className="card p-3 flex flex-col gap-1.5">
+      <span className="text-2xl">{emoji}</span>
+      <p className="text-sm font-semibold" style={{ color:"var(--text-primary)" }}>{title}</p>
+      <p className="text-xs" style={{ color:"var(--text-faint)" }}>{desc}</p>
     </div>
   );
 }
 
 function Divider({ label }: { label: string }) {
   return (
-    <div className="px-4 mt-4 mb-2 flex items-center gap-2">
-      <div className="flex-1 h-px bg-white/5" />
-      <span className="text-[10px] text-white/20 tracking-[0.3em] uppercase">{label}</span>
-      <div className="flex-1 h-px bg-white/5" />
+    <div className="px-4 mt-4 mb-3 flex items-center gap-2.5">
+      <div className="flex-1 h-px" style={{ background:"var(--border-subtle)" }} />
+      <span className="section-label">{label}</span>
+      <div className="flex-1 h-px" style={{ background:"var(--border-subtle)" }} />
     </div>
   );
 }
 
 // ─── Bottom Nav ───────────────────────────────────────────────
-
-function BottomNav({ activeTab, onTabChange }: { activeTab: TabId; onTabChange: (t: TabId) => void }) {
+function BottomNav({ tab, onTabChange }: { tab: TabId; onTabChange: (t:TabId)=>void }) {
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-30">
-      <div className="h-6 bg-gradient-to-t from-[#080C18] to-transparent pointer-events-none" />
-      <div className="bg-[#0B0F1A]/85 backdrop-blur-2xl border-t border-white/6 px-2 pb-safe pb-3 pt-2">
+    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-30"
+      aria-label="Điều hướng chính">
+      <div className="h-4 pointer-events-none" style={{ background:"linear-gradient(to top, var(--bg-base), transparent)" }} />
+      <div className="border-t tab-bar-safe px-2 pt-2"
+        style={{ background:"var(--tab-bar-bg)", backdropFilter:"blur(20px)", borderColor:"var(--border-subtle)" }}>
         <div className="flex items-center justify-around">
-          {TABS.map(tab => {
-            const active = activeTab === tab.id;
+          {TABS.map(t => {
+            const active = tab === t.id;
             return (
-              <motion.button key={tab.id} onClick={() => onTabChange(tab.id)} whileTap={{ scale: 0.86 }}
-                className="relative flex flex-col items-center gap-0.5 px-2 py-1 min-w-0 flex-1">
+              <motion.button key={t.id} onClick={() => onTabChange(t.id)}
+                whileTap={{ scale:0.86 }}
+                className="relative flex flex-col items-center gap-0.5 px-2 py-1 flex-1"
+                aria-label={t.label} aria-current={active ? "page" : undefined}>
                 {active && (
-                  <motion.div layoutId="nav-pill"
-                    className="absolute -top-1 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-gradient-to-r from-transparent via-amber-400 to-transparent"
-                    transition={{ type: "spring", damping: 20, stiffness: 300 }} />
+                  <motion.div layoutId="tab-indicator"
+                    className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full"
+                    style={{ background:"var(--gold)" }}
+                    transition={{ type:"spring", damping:24, stiffness:280 }} />
                 )}
                 <motion.span className="text-xl leading-none"
-                  animate={{ scale: active ? 1.18 : 1 }} transition={{ type: "spring", damping: 15 }}>
-                  {active ? tab.activeIcon : tab.icon}
+                  animate={{ scale: active?1.15:1 }} transition={{ type:"spring", damping:15 }}>
+                  {t.icon}
                 </motion.span>
-                <motion.span className="text-[9px] font-medium tracking-wide leading-none"
-                  animate={{ color: active ? "rgba(251,191,36,0.9)" : "rgba(255,255,255,0.3)" }}
-                  transition={{ duration: 0.2 }}>
-                  {tab.label}
+                <motion.span className="text-[9px] font-semibold leading-none"
+                  animate={{ color: active?"var(--gold)":"var(--text-muted)" }}
+                  transition={{ duration:0.2 }}>
+                  {t.label}
                 </motion.span>
               </motion.button>
             );
