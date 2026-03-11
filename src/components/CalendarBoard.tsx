@@ -34,11 +34,11 @@ export function CalendarBoard({ currentDate }: CalendarBoardProps) {
 
   return (
     <div className="px-4 pt-4">
-      <AnimatePresence mode="wait" custom={direction}>
-        <motion.div key={displayDate.toDateString()} custom={direction}
-          initial={d => ({ opacity:0, y: d>0?20:-20 })}
+      <AnimatePresence mode="wait">
+        <motion.div key={displayDate.toDateString()}
+          initial={{ opacity:0, y: direction>0?20:-20 }}
           animate={{ opacity:1, y:0, transition:{ type:"spring", damping:25, stiffness:260 } }}
-          exit={d => ({ opacity:0, y: d>0?-20:20, transition:{ duration:0.12 } })}>
+          exit={{ opacity:0, y: direction>0?-20:20, transition:{ duration:0.12 } }}>
 
           {/* Main card */}
           <div className="card overflow-hidden" style={{ boxShadow: "var(--shadow-float)" }}>
