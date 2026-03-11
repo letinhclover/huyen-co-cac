@@ -1,17 +1,12 @@
 // ============================================================
-// FortuneCard.tsx — Minimal, no useEffect, no auto-call
+// FortuneCard.tsx — AI Luận Giải — Design System v5
 // ============================================================
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  generateDailyFortune,
-  getCachedFortune,
-  setCachedFortune,
-  makeCacheKey,
-  FORTUNE_TOPICS,
-  type GeminiError,
-  type FortuneTopic,
+  generateDailyFortune, getCachedFortune, setCachedFortune, makeCacheKey,
+  FORTUNE_TOPICS, type GeminiError, type FortuneTopic,
 } from "../utils/gemini";
 import { UserProfile, solarToLunar, getCanChiDay, toJDN } from "../utils/astrology";
 
@@ -23,7 +18,7 @@ interface FortuneCardProps {
 
 // ─── Typewriter ───────────────────────────────────────────────
 
-function Typewriter({ text, speed = 28, onDone }: { text: string; speed?: number; onDone?: () => void }) {
+function Typewriter({ text, speed = 25, onDone }: { text: string; speed?: number; onDone?: () => void }) {
   const [shown, setShown] = useState("");
   const [done,  setDone]  = useState(false);
   const ref = useRef({ idx: 0, timer: 0 as ReturnType<typeof setInterval> });
@@ -31,11 +26,10 @@ function Typewriter({ text, speed = 28, onDone }: { text: string; speed?: number
   useEffect(() => {
     clearInterval(ref.current.timer);
     ref.current.idx = 0;
-    setShown("");
-    setDone(false);
+    setShown(""); setDone(false);
     if (!text) return;
     ref.current.timer = setInterval(() => {
-      ref.current.idx += 1;
+      ref.current.idx++;
       setShown(text.slice(0, ref.current.idx));
       if (ref.current.idx >= text.length) {
         clearInterval(ref.current.timer);
@@ -47,11 +41,12 @@ function Typewriter({ text, speed = 28, onDone }: { text: string; speed?: number
   }, [text]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <p className="text-sm leading-relaxed">
+    <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
       {shown}
       {!done && (
         <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ duration: 0.5, repeat: Infinity }}
-          className="inline-block w-0.5 h-4 bg-violet-400/70 ml-0.5 align-middle rounded-full" />
+          className="inline-block w-0.5 h-3.5 ml-0.5 align-middle rounded-full"
+          style={{ background: "var(--gold)" }} />
       )}
     </p>
   );
@@ -60,42 +55,36 @@ function Typewriter({ text, speed = 28, onDone }: { text: string; speed?: number
 // ─── Spinner ──────────────────────────────────────────────────
 
 function Spinner({ small }: { small?: boolean }) {
+  const sz = small ? "w-4 h-4" : "w-7 h-7";
   return (
-    <div className={`relative flex-shrink-0 ${small ? "w-5 h-5" : "w-8 h-8"}`}>
-      <motion.div className="absolute inset-0 rounded-full border-2 border-violet-400/15"
-        animate={{ rotate: 360 }} transition={{ duration: 1.6, repeat: Infinity, ease: "linear" }}
-        style={{ borderTopColor: "rgba(167,139,250,0.7)" }} />
+    <div className={`relative flex-shrink-0 ${sz}`}>
+      <motion.div className="absolute inset-0 rounded-full border-2"
+        animate={{ rotate: 360 }} transition={{ duration: 1.4, repeat: Infinity, ease: "linear" }}
+        style={{ borderColor: "var(--border-medium)", borderTopColor: "var(--gold)" }} />
     </div>
   );
 }
 
-// ─── Component ───────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────
 
 export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardProps) {
-  // ── Derived values (không đổi trong 1 render cycle) ─────────
   const dateIso     = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
   const dateLabel   = `${date.getDate()}/${date.getMonth()+1}/${date.getFullYear()}`;
   const jdn         = toJDN(date.getDate(), date.getMonth()+1, date.getFullYear());
   const todayCanChi = getCanChiDay(jdn);
   const lunar       = solarToLunar(date.getDate(), date.getMonth()+1, date.getFullYear());
 
-  // ── State ────────────────────────────────────────────────────
   type S = "idle" | "loading" | "typing" | "done" | "error";
-  const [ov,      setOv]      = useState<{ s: S; text: string; err: GeminiError | null }>({ s: "idle", text: "", err: null });
-  const [topic,   setTopic]   = useState<FortuneTopic | null>(null);
-  const [tp,      setTp]      = useState<{ s: S; text: string; err: GeminiError | null }>({ s: "idle", text: "", err: null });
-  const [sharing, setSharing] = useState(false);
-  const shareRef  = useRef<HTMLDivElement>(null);
-
-  // Single ref guard — chắc chắn không gọi 2 lần
+  const [ov,    setOv]  = useState<{ s: S; text: string; err: GeminiError | null }>({ s: "idle", text: "", err: null });
+  const [topic, setTopic] = useState<FortuneTopic | null>(null);
+  const [tp,    setTp]  = useState<{ s: S; text: string; err: GeminiError | null }>({ s: "idle", text: "", err: null });
   const calling = useRef(false);
 
-  // ── Reset khi đổi ngày ──────────────────────────────────────
+  // Reset on date change
   const prevDateRef = useRef(dateIso);
   if (prevDateRef.current !== dateIso) {
     prevDateRef.current = dateIso;
-    calling.current     = false;
-    // Reset state synchronously (safe vì là trong render guard)
+    calling.current = false;
     if (ov.s !== "idle") {
       setTimeout(() => {
         setOv({ s: "idle", text: "", err: null });
@@ -105,70 +94,50 @@ export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardPr
     }
   }
 
-  // Check cache khi có profile
-  const cacheKey      = userProfile ? makeCacheKey(dateIso, userProfile.birthYear, "Tổng quan") : "";
+  const cacheKey       = userProfile ? makeCacheKey(dateIso, userProfile.birthYear, "Tổng quan") : "";
   const cachedOverview = cacheKey ? getCachedFortune(cacheKey) : null;
 
-  // Nếu cache có nhưng state chưa cập nhật
   useEffect(() => {
     if (!cachedOverview) return;
-    if (ov.s === "idle" || ov.s === "error") {
+    if (ov.s === "idle" || ov.s === "error")
       setOv({ s: "done", text: cachedOverview.text, err: null });
-    }
   }, [cacheKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Gọi AI ──────────────────────────────────────────────────
   const callAI = useCallback(async () => {
     if (!userProfile || calling.current) return;
-
-    const key    = makeCacheKey(dateIso, userProfile.birthYear, "Tổng quan");
+    const key = makeCacheKey(dateIso, userProfile.birthYear, "Tổng quan");
     const cached = getCachedFortune(key);
     if (cached) { setOv({ s: "done", text: cached.text, err: null }); return; }
-
     calling.current = true;
     setOv({ s: "loading", text: "", err: null });
-
     try {
       const r = await generateDailyFortune(
         String(userProfile.birthYear),
         `${userProfile.elementName} (${userProfile.destinyName})`,
-        userProfile.canChiYear,
-        todayCanChi,
-        dateLabel,
-        "Tổng quan"
+        userProfile.canChiYear, todayCanChi, dateLabel, "Tổng quan"
       );
       setCachedFortune(key, { ...r, cached: false });
       setOv({ s: "typing", text: r.text, err: null });
     } catch (e) {
-      calling.current = false; // Cho phép retry
+      calling.current = false;
       setOv({ s: "error", text: "", err: e as GeminiError });
     }
   }, [userProfile, dateIso, todayCanChi, dateLabel]);
 
-  // ── Topic ────────────────────────────────────────────────────
   const callTopic = useCallback(async (t: FortuneTopic) => {
     if (!userProfile) return;
     if (tp.s === "loading" || tp.s === "typing") return;
-
-    // Toggle off
-    if (topic === t && tp.s === "done") {
-      setTopic(null); setTp({ s: "idle", text: "", err: null }); return;
-    }
+    if (topic === t && tp.s === "done") { setTopic(null); setTp({ s: "idle", text: "", err: null }); return; }
     setTopic(t);
-
-    const key    = makeCacheKey(dateIso, userProfile.birthYear, t);
+    const key = makeCacheKey(dateIso, userProfile.birthYear, t);
     const cached = getCachedFortune(key);
     if (cached) { setTp({ s: "done", text: cached.text, err: null }); return; }
-
     setTp({ s: "loading", text: "", err: null });
     try {
       const r = await generateDailyFortune(
         String(userProfile.birthYear),
         `${userProfile.elementName} (${userProfile.destinyName})`,
-        userProfile.canChiYear,
-        todayCanChi,
-        dateLabel,
-        t
+        userProfile.canChiYear, todayCanChi, dateLabel, t
       );
       setCachedFortune(key, { ...r, cached: false });
       setTp({ s: "typing", text: r.text, err: null });
@@ -177,29 +146,19 @@ export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardPr
     }
   }, [userProfile, topic, tp.s, dateIso, todayCanChi, dateLabel]);
 
-  // ── Share ────────────────────────────────────────────────────
-  const handleShare = useCallback(async () => {
-    if (!shareRef.current || sharing) return;
-    setSharing(true);
-    try {
-      const { toPng } = await import("html-to-image");
-      const url = await toPng(shareRef.current, { pixelRatio: 2 });
-      Object.assign(document.createElement("a"), { download: `hcc-${dateIso}.png`, href: url }).click();
-    } catch { /* ignore */ }
-    finally { setSharing(false); }
-  }, [dateIso, sharing]);
-
-  // ─────────────────────────────────────────────────────────────
+  // ─── No profile ──────────────────────────────────────────────
 
   if (!userProfile) {
     return (
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mx-4 my-2">
-        <div className="rounded-2xl border style={{ borderColor:"var(--border-subtle)" }} bg-transparent px-5 py-5 flex flex-col items-center gap-3 text-center">
-          <div className="w-11 h-11 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-2xl">🤖</div>
-          <p className="text-white/70 text-sm font-medium">AI chưa biết bạn là ai</p>
-          <p className="text-white/30 text-xs leading-relaxed">Thiết lập bản mệnh để nhận luận giải cá nhân hóa</p>
-          <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.96 }} onClick={onSetupProfile}
-            className="rounded-xl bg-violet-500/15 border border-violet-500/25 text-violet-300 text-xs px-5 py-2">
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="my-2">
+        <div className="card px-5 py-5 flex flex-col items-center gap-3 text-center">
+          <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl"
+            style={{ background: "var(--gold-bg)", border: "1px solid var(--gold-border)" }}>🤖</div>
+          <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>AI chưa biết bạn là ai</p>
+          <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
+            Thiết lập bản mệnh để nhận luận giải cá nhân hóa
+          </p>
+          <motion.button whileTap={{ scale: 0.96 }} onClick={onSetupProfile} className="btn-gold px-5 py-2 rounded-xl text-sm">
             Thiết lập ngay →
           </motion.button>
         </div>
@@ -210,36 +169,42 @@ export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardPr
   const ovDone = ov.s === "done";
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="mx-4 my-2">
-      <div ref={shareRef} className="rounded-2xl border border-violet-500/15 bg-gradient-to-br from-[#0D0A1F] via-[#0B0F1A] to-[#0A0D1E] overflow-hidden">
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="my-2">
+      <div className="card overflow-hidden">
 
         {/* Header */}
-        <div className="px-5 pt-4 pb-3 flex items-center gap-2.5 border-b border-white/5">
-          <div className="w-8 h-8 rounded-xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center">✨</div>
+        <div className="px-5 pt-4 pb-3 flex items-center gap-2.5 border-b"
+          style={{ borderColor: "var(--border-subtle)" }}>
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base"
+            style={{ background: "var(--gold-bg)", border: "1px solid var(--gold-border)" }}>✨</div>
           <div className="flex-1">
-            <p className="text-[10px] text-violet-400/55 tracking-widest uppercase">AI Gemini · Luận Giải</p>
-            <p className="text-white/45 text-xs">{dateLabel} · {lunar.canChiYear}</p>
+            <p className="section-label">AI Groq · Luận Giải</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              {dateLabel} · {lunar.canChiYear}
+            </p>
           </div>
-          {ovDone && <span className="text-[9px] text-white/18 border style={{ borderColor:"var(--border-subtle)" }} rounded-full px-2 py-0.5">{cachedOverview ? "Cache" : "Đã lưu"}</span>}
+          {ovDone && (
+            <span className="text-xs px-2 py-0.5 rounded-full"
+              style={{ background: "var(--bg-elevated)", color: "var(--text-faint)", border: "1px solid var(--border-subtle)" }}>
+              {cachedOverview ? "Cache" : "Mới"}
+            </span>
+          )}
         </div>
 
-        {/* Tổng quan */}
-        <div className="px-5 py-5">
-          <p className="text-[10px] text-violet-400/40 tracking-widest uppercase mb-3">🌟 Tổng Quan Ngày</p>
+        {/* Body */}
+        <div className="px-5 py-4">
+          <p className="section-label mb-3">🌟 Tổng Quan Ngày</p>
 
           <AnimatePresence mode="wait">
             {ov.s === "idle" && (
               <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="flex flex-col items-center gap-3 py-2">
-                <p className="text-white/25 text-xs text-center">
-                  Can Chi: <span className="text-amber-400/55">{todayCanChi}</span>
-                  {" · "}Tuổi: <span className="text-amber-400/55">{userProfile.canChiYear}</span>
+                <p className="text-xs text-center" style={{ color: "var(--text-faint)" }}>
+                  Can Chi: <span style={{ color: "var(--gold)" }}>{todayCanChi}</span>
+                  {" · "}Tuổi: <span style={{ color: "var(--gold)" }}>{userProfile.canChiYear}</span>
                 </p>
-                <motion.button
-                  whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.95 }}
-                  onClick={callAI}
-                  className="flex items-center gap-2 rounded-xl bg-violet-500/20 border border-violet-400/30 text-violet-200 text-sm font-medium px-6 py-2.5 hover:bg-violet-500/28 transition-all"
-                >
+                <motion.button whileTap={{ scale: 0.95 }} onClick={callAI}
+                  className="btn-gold flex items-center gap-2 px-6 py-2.5 rounded-2xl text-sm">
                   ✨ Bấm để AI luận giải hôm nay
                 </motion.button>
               </motion.div>
@@ -247,9 +212,9 @@ export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardPr
 
             {ov.s === "loading" && (
               <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="flex flex-col items-center gap-3 py-4">
+                className="flex flex-col items-center gap-3 py-5">
                 <Spinner />
-                <p className="text-violet-300/45 text-xs tracking-widest">Đang kết nối vũ trụ...</p>
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>Đang kết nối vũ trụ...</p>
               </motion.div>
             )}
 
@@ -261,22 +226,24 @@ export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardPr
 
             {ov.s === "done" && (
               <motion.div key="done" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-3">
-                <p className="text-sm leading-relaxed">{ov.text}</p>
+                <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{ov.text}</p>
 
                 {/* Topic buttons */}
-                <div className="pt-3 border-t border-white/5">
-                  <p className="text-[10px] text-white/18 tracking-widest uppercase mb-2">Hỏi sâu hơn →</p>
-                  <div className="flex gap-2">
+                <div className="pt-3 border-t" style={{ borderColor: "var(--border-subtle)" }}>
+                  <p className="section-label mb-2">Hỏi sâu hơn →</p>
+                  <div className="flex gap-1.5">
                     {FORTUNE_TOPICS.filter(f => f.id !== "Tổng quan").map(f => {
                       const active = topic === f.id;
                       const busy   = active && (tp.s === "loading" || tp.s === "typing");
                       return (
-                        <motion.button key={f.id} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.91 }}
+                        <motion.button key={f.id} whileTap={{ scale: 0.93 }}
                           onClick={() => callTopic(f.id)}
-                          className={`flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs font-medium transition-all flex-1 justify-center ${
-                            active ? "border-violet-400/40 bg-violet-500/18 text-violet-200"
-                                   : "style={{ borderColor:"var(--border-subtle)" }} bg-transparent text-white/38 hover:text-violet-300/65 hover:border-violet-400/20"
-                          }`}>
+                          className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all flex-1 justify-center"
+                          style={{
+                            background: active ? "var(--gold-bg)" : "var(--bg-elevated)",
+                            border: `1px solid ${active ? "var(--gold-border)" : "var(--border-subtle)"}`,
+                            color: active ? "var(--gold)" : "var(--text-muted)",
+                          }}>
                           {busy
                             ? <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.9, repeat: Infinity, ease: "linear" }}>⟳</motion.span>
                             : <span>{f.emoji}</span>}
@@ -292,32 +259,29 @@ export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardPr
                   {topic && tp.s !== "idle" && (
                     <motion.div key={topic} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
                       exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                      <div className="rounded-xl border border-violet-500/10 bg-violet-900/8 px-4 py-3">
-                        <p className="text-[10px] text-violet-400/45 tracking-widest uppercase mb-2">
+                      <div className="rounded-xl p-3" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-subtle)" }}>
+                        <p className="section-label mb-2">
                           {FORTUNE_TOPICS.find(f => f.id === topic)?.emoji} {topic}
                         </p>
                         <AnimatePresence mode="wait">
                           {tp.s === "loading" && (
-                            <motion.div key="tl" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                              className="flex items-center gap-2">
-                              <Spinner small /><p className="text-violet-300/45 text-xs">Đang thỉnh thiên cơ...</p>
+                            <motion.div key="tl" className="flex items-center gap-2">
+                              <Spinner small />
+                              <p className="text-xs" style={{ color: "var(--text-muted)" }}>Đang thỉnh thiên cơ...</p>
                             </motion.div>
                           )}
                           {(tp.s === "typing" || tp.s === "done") && tp.text && (
                             <motion.div key="tt" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                               {tp.s === "typing"
                                 ? <Typewriter text={tp.text} onDone={() => setTp(p => ({ ...p, s: "done" }))} />
-                                : <p className="text-white/70 text-sm leading-relaxed">{tp.text}</p>}
+                                : <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{tp.text}</p>}
                             </motion.div>
                           )}
                           {tp.s === "error" && tp.err && (
                             <motion.div key="te" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                              <p className="text-white/40 text-xs mb-1">{tp.err.message}</p>
-                              {tp.err.debug && (
-                                <p className="text-white/20 text-[10px] font-mono break-all">{tp.err.debug}</p>
-                              )}
+                              <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>{tp.err.message}</p>
                               <motion.button whileTap={{ scale: 0.95 }} onClick={() => topic && callTopic(topic)}
-                                className="mt-2 text-violet-400/50 text-xs border border-violet-400/15 rounded-lg px-3 py-1">Thử lại</motion.button>
+                                className="btn-ghost text-xs px-3 py-1.5 rounded-lg">Thử lại</motion.button>
                             </motion.div>
                           )}
                         </AnimatePresence>
@@ -326,8 +290,8 @@ export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardPr
                   )}
                 </AnimatePresence>
 
-                {/* Retry */}
-                <div className="flex justify-end pt-1 border-t border-white/5">
+                {/* Reset */}
+                <div className="flex justify-end pt-1 border-t" style={{ borderColor: "var(--border-subtle)" }}>
                   <motion.button whileTap={{ scale: 0.95 }}
                     onClick={() => {
                       if (cacheKey) try { localStorage.removeItem(cacheKey); } catch { /**/ }
@@ -335,7 +299,7 @@ export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardPr
                       setOv({ s: "idle", text: "", err: null });
                       setTopic(null); setTp({ s: "idle", text: "", err: null });
                     }}
-                    className="text-white/18 text-[10px] hover:text-violet-400/45 transition-colors flex items-center gap-1">
+                    className="text-xs" style={{ color: "var(--text-faint)" }}>
                     ↻ Luận giải lại
                   </motion.button>
                 </div>
@@ -343,21 +307,22 @@ export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardPr
             )}
 
             {ov.s === "error" && ov.err && (
-              <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-1 flex flex-col gap-2">
+              <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-2 flex flex-col gap-2">
                 <div className="flex items-start gap-2">
-                  <span className="text-xl">{ov.err.type === "rate_limit" ? "⏳" : ov.err.type === "network" ? "📡" : ov.err.type === "no_api_key" ? "🔑" : "😅"}</span>
-                  <p className="text-white/50 text-sm leading-relaxed">{ov.err.message}</p>
+                  <span className="text-xl flex-shrink-0">
+                    {ov.err.type === "rate_limit" ? "⏳" : ov.err.type === "network" ? "📡" : ov.err.type === "no_api_key" ? "🔑" : "😅"}
+                  </span>
+                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{ov.err.message}</p>
                 </div>
-                {/* Debug info — hiện để dễ troubleshoot */}
                 {ov.err.debug && (
-                  <div className="rounded-lg bg-black/30 border style={{ borderColor:"var(--border-subtle)" }} px-3 py-2">
-                    <p className="text-white/25 text-[10px] font-mono break-all leading-relaxed">{ov.err.debug}</p>
+                  <div className="rounded-lg p-2.5" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-subtle)" }}>
+                    <p className="text-xs font-mono break-all" style={{ color: "var(--text-faint)" }}>{ov.err.debug}</p>
                   </div>
                 )}
                 {ov.err.type !== "no_api_key" && (
-                  <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                  <motion.button whileTap={{ scale: 0.97 }}
                     onClick={() => { calling.current = false; callAI(); }}
-                    className="self-start rounded-lg border border-white/10 bg-white/5 text-white/40 text-xs px-4 py-2 hover:border-violet-400/30 hover:text-violet-300 transition-all">
+                    className="btn-ghost self-start text-xs px-4 py-2 rounded-xl">
                     Thử lại
                   </motion.button>
                 )}
@@ -366,28 +331,12 @@ export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardPr
           </AnimatePresence>
         </div>
 
-        {/* Watermark */}
-        <div className="px-5 pb-3 flex justify-between">
-          <p className="text-white/10 text-[10px]">🔮 huyen-co-cac.pages.dev</p>
-          <p className="text-white/10 text-[10px]">{dateLabel}</p>
+        {/* Footer */}
+        <div className="px-5 pb-3 flex justify-between border-t" style={{ borderColor: "var(--border-subtle)" }}>
+          <p className="text-xs" style={{ color: "var(--text-faint)" }}>🔮 huyen-co-cac.pages.dev</p>
+          <p className="text-xs" style={{ color: "var(--text-faint)" }}>{dateLabel}</p>
         </div>
       </div>
-
-      {/* Share button */}
-      <AnimatePresence>
-        {ovDone && (
-          <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-            className="mt-2 flex justify-end px-1">
-            <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.95 }}
-              onClick={handleShare} disabled={sharing}
-              className="flex items-center gap-2 rounded-xl border style={{ borderColor:"var(--border-subtle)" }} bg-transparent text-white/30 text-xs px-4 py-2 hover:border-amber-400/18 hover:text-amber-300/55 transition-all disabled:opacity-40">
-              {sharing
-                ? <><motion.span animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>⟳</motion.span> Đang tạo...</>
-                : <><span>📤</span> Tải ảnh chia sẻ Story</>}
-            </motion.button>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 }
