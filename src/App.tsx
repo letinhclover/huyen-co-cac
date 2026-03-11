@@ -11,7 +11,8 @@ import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { AiTab }            from "./tabs/AiTab";
 import { OracleTab }        from "./tabs/OracleTab";
 import { ProfileTab }       from "./tabs/ProfileTab";
-import { UtilsTab }         from "./tabs/UtilsTab";
+import { UtilsTab } from "./tabs/UtilsTab";
+import { TuviTab } from "./tabs/TuviTab";
 import { buildUserProfile, UserProfile } from "./utils/astrology";
 
 type TabId = "calendar" | "ai" | "oracle" | "utils" | "profile";
@@ -114,10 +115,18 @@ export default function App() {
             )}
             {activeTab === "oracle" && <OracleTab />}
             {activeTab === "utils" && (
-              <UtilsTab userProfile={userProfile} onSetupProfile={handleSetupProfile} />
+              <UtilsTab birthYear={userProfile?.birthYear} />
             )}
             {activeTab === "profile" && (
-              <ProfileTab userProfile={userProfile} onProfileChange={handleProfileChange} />
+              <div className="flex flex-col">
+                <ProfileTab userProfile={userProfile} onProfileChange={handleProfileChange} />
+                <div className="mx-4 mb-2 mt-2 flex items-center gap-2">
+                  <div className="flex-1 h-px bg-white/5" />
+                  <span className="text-[10px] text-white/20 tracking-[0.3em] uppercase">Tử Vi Trọn Đời</span>
+                  <div className="flex-1 h-px bg-white/5" />
+                </div>
+                <TuviTab birthYear={userProfile?.birthYear} />
+              </div>
             )}
           </motion.div>
         </AnimatePresence>
