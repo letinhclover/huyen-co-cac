@@ -89,21 +89,21 @@ function NumerologyView({ userProfile, onSetupProfile }: { userProfile:UserProfi
         <div className="card p-4 flex items-center gap-4">
           <div className="w-16 h-16 rounded-2xl flex flex-col items-center justify-center flex-shrink-0"
             style={{ background:"var(--gold-bg)", border:"2px solid var(--gold-border)" }}>
-            <span className="text-2xl font-bold font-display" style={{ color:"var(--gold)" }}>{num.lifePath}</span>
+            <span className="text-2xl font-bold font-display" style={{ color:"var(--gold)" }}>{num.lifePathNumber}</span>
             <span className="text-[9px]" style={{ color:"var(--text-muted)" }}>Đường Đời</span>
           </div>
           <div>
-            <p className="font-bold text-base" style={{ color:"var(--text-primary)" }}>Số {num.lifePath} — {num.lifePathName}</p>
-            <p className="text-xs leading-relaxed mt-1" style={{ color:"var(--text-secondary)" }}>{num.lifePathDesc}</p>
+            <p className="font-bold text-base" style={{ color:"var(--text-primary)" }}>Số {num.lifePathNumber} — {num.lifePathInfo.title}</p>
+            <p className="text-xs leading-relaxed mt-1" style={{ color:"var(--text-secondary)" }}>{num.lifePathInfo.description}</p>
           </div>
         </div>
 
         {/* Personal year */}
         <div className="card p-4">
           <p className="section-label mb-2">Năm Cá Nhân {new Date().getFullYear()} — Số {num.personalYear}</p>
-          <p className="text-sm leading-relaxed" style={{ color:"var(--text-secondary)" }}>{pyInfo.description}</p>
+          <p className="text-sm leading-relaxed" style={{ color:"var(--text-secondary)" }}>{pyInfo.summary}</p>
           <div className="flex flex-wrap gap-1.5 mt-2">
-            {pyInfo.focus.map((f:string) => (
+            {pyInfo.focus.split(" · ").map((f:string) => (
               <span key={f} className="text-xs px-2 py-0.5 rounded-full font-medium"
                 style={{ background:"var(--gold-bg)", color:"var(--gold)", border:"1px solid var(--gold-border)" }}>{f}</span>
             ))}
@@ -114,9 +114,9 @@ function NumerologyView({ userProfile, onSetupProfile }: { userProfile:UserProfi
         <div className="card overflow-hidden">
           <div className="grid grid-cols-3 divide-x" style={{ borderColor:"var(--border-subtle)" }}>
             {[
-              { label:"Biểu Đạt", val:num.expression },
+              { label:"Tâm Hồn",   val:num.soulUrge },
               { label:"Tâm Hồn",  val:num.soulUrge },
-              { label:"Nhân Cách",val:num.personality },
+              { label:"Ngày Sinh", val:num.birthDay },
             ].map(({ label, val }) => (
               <div key={label} className="py-4 text-center">
                 <p className="text-2xl font-bold font-display mb-1" style={{ color:"var(--gold)" }}>{val}</p>

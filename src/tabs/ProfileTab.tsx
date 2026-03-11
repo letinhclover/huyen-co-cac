@@ -176,7 +176,7 @@ export function ProfileTab({ userProfile, onProfileChange }: ProfileTabProps) {
       {shopee && userProfile && (
         <motion.a initial={{ opacity:0 }} animate={{ opacity:1 }} href={shopee.url} target="_blank" rel="noopener noreferrer"
           className="card p-4 flex items-center gap-3 transition-opacity active:opacity-70">
-          <span className="text-3xl">{shopee.icon}</span>
+          <span className="text-3xl">{shopee.emoji}</span>
           <div className="flex-1">
             <p className="section-label mb-0.5">Vật phẩm hợp mệnh {ELEMENT_LABEL[userProfile.element]}</p>
             <p className="text-sm font-medium" style={{ color:"var(--text-primary)" }}>{shopee.name}</p>
