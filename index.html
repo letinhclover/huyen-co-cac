@@ -1,18 +1,75 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" class="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#080C18" />
+
+    <!-- Theme color per mode -->
+    <meta name="theme-color" content="#080C18" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#FEF9EE" media="(prefers-color-scheme: light)" />
+
+    <!-- PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Huyền Cơ Các" />
-    <meta name="description" content="Lịch Vạn Niên & Tâm Linh Cá Nhân Hóa — Huyền Cơ Các" />
-    <!-- Preconnect for Google Fonts -->
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- SEO Primary -->
+    <title>Huyền Cơ Các ✦ Lịch Vạn Niên & Xem Ngày Tốt Xấu 2025-2026</title>
+    <meta name="description" content="Xem lịch vạn niên, ngày tốt xấu, 114 sao cát hung, 12 trực, hỏi thầy phong thủy AI, xem tuổi hợp, 64 quẻ Kinh Dịch — miễn phí, chính xác, cá nhân hóa." />
+    <meta name="keywords" content="lịch vạn niên, xem ngày tốt, ngày tốt xấu 2026, hỏi thầy phong thủy, 64 quẻ kinh dịch, xem tuổi hợp, ngày tốt khai trương, ngày tốt cưới hỏi, âm lịch 2026, huyền cơ các" />
+    <meta name="author" content="Huyền Cơ Các" />
+    <link rel="canonical" href="https://huyen-co-cac.pages.dev/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type"        content="website" />
+    <meta property="og:url"         content="https://huyen-co-cac.pages.dev/" />
+    <meta property="og:title"       content="Huyền Cơ Các — Lịch Vạn Niên & Phong Thủy Cá Nhân Hóa" />
+    <meta property="og:description" content="Xem ngày tốt xấu chính xác với 114 sao cát hung. Hỏi thầy AI 24/7. 64 quẻ Kinh Dịch. Xem tuổi hợp. Miễn phí." />
+    <meta property="og:image"       content="https://huyen-co-cac.pages.dev/og-image.png" />
+    <meta property="og:locale"      content="vi_VN" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card"        content="summary_large_image" />
+    <meta name="twitter:title"       content="Huyền Cơ Các — Lịch Vạn Niên & Phong Thủy AI" />
+    <meta name="twitter:description" content="Xem ngày tốt, hỏi thầy AI, 64 quẻ Kinh Dịch — cá nhân hóa theo tuổi & mệnh" />
+    <meta name="twitter:image"       content="https://huyen-co-cac.pages.dev/og-image.png" />
+
+    <!-- Preconnect -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <title>Huyền Cơ Các ✦ Lịch Vạn Niên</title>
+    <link rel="preconnect" href="https://api.groq.com" />
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Huyền Cơ Các",
+      "description": "Lịch vạn niên, xem ngày tốt xấu, phong thủy cá nhân hóa với AI",
+      "url": "https://huyen-co-cac.pages.dev/",
+      "applicationCategory": "LifestyleApplication",
+      "operatingSystem": "Any",
+      "inLanguage": "vi",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "VND" }
+    }
+    </script>
+
+    <!-- Dark mode init (prevent flash) -->
+    <script>
+      (function() {
+        try {
+          var theme = localStorage.getItem('hcc_theme');
+          if (theme === 'light') {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.add('light');
+          } else {
+            document.documentElement.classList.add('dark');
+          }
+        } catch(e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
