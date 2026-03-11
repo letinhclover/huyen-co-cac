@@ -47,7 +47,7 @@ function Typewriter({ text, speed = 28, onDone }: { text: string; speed?: number
   }, [text]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <p className="text-white/75 text-sm leading-relaxed">
+    <p className="text-sm leading-relaxed">
       {shown}
       {!done && (
         <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ duration: 0.5, repeat: Infinity }}
@@ -194,7 +194,7 @@ export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardPr
   if (!userProfile) {
     return (
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mx-4 my-2">
-        <div className="rounded-2xl border border-white/8 bg-white/3 px-5 py-5 flex flex-col items-center gap-3 text-center">
+        <div className="rounded-2xl border style={{ borderColor:"var(--border-subtle)" }} bg-transparent px-5 py-5 flex flex-col items-center gap-3 text-center">
           <div className="w-11 h-11 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-2xl">🤖</div>
           <p className="text-white/70 text-sm font-medium">AI chưa biết bạn là ai</p>
           <p className="text-white/30 text-xs leading-relaxed">Thiết lập bản mệnh để nhận luận giải cá nhân hóa</p>
@@ -220,7 +220,7 @@ export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardPr
             <p className="text-[10px] text-violet-400/55 tracking-widest uppercase">AI Gemini · Luận Giải</p>
             <p className="text-white/45 text-xs">{dateLabel} · {lunar.canChiYear}</p>
           </div>
-          {ovDone && <span className="text-[9px] text-white/18 border border-white/8 rounded-full px-2 py-0.5">{cachedOverview ? "Cache" : "Đã lưu"}</span>}
+          {ovDone && <span className="text-[9px] text-white/18 border style={{ borderColor:"var(--border-subtle)" }} rounded-full px-2 py-0.5">{cachedOverview ? "Cache" : "Đã lưu"}</span>}
         </div>
 
         {/* Tổng quan */}
@@ -261,7 +261,7 @@ export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardPr
 
             {ov.s === "done" && (
               <motion.div key="done" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-3">
-                <p className="text-white/75 text-sm leading-relaxed">{ov.text}</p>
+                <p className="text-sm leading-relaxed">{ov.text}</p>
 
                 {/* Topic buttons */}
                 <div className="pt-3 border-t border-white/5">
@@ -275,7 +275,7 @@ export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardPr
                           onClick={() => callTopic(f.id)}
                           className={`flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs font-medium transition-all flex-1 justify-center ${
                             active ? "border-violet-400/40 bg-violet-500/18 text-violet-200"
-                                   : "border-white/8 bg-white/3 text-white/38 hover:text-violet-300/65 hover:border-violet-400/20"
+                                   : "style={{ borderColor:"var(--border-subtle)" }} bg-transparent text-white/38 hover:text-violet-300/65 hover:border-violet-400/20"
                           }`}>
                           {busy
                             ? <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.9, repeat: Infinity, ease: "linear" }}>⟳</motion.span>
@@ -350,7 +350,7 @@ export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardPr
                 </div>
                 {/* Debug info — hiện để dễ troubleshoot */}
                 {ov.err.debug && (
-                  <div className="rounded-lg bg-black/30 border border-white/8 px-3 py-2">
+                  <div className="rounded-lg bg-black/30 border style={{ borderColor:"var(--border-subtle)" }} px-3 py-2">
                     <p className="text-white/25 text-[10px] font-mono break-all leading-relaxed">{ov.err.debug}</p>
                   </div>
                 )}
@@ -380,7 +380,7 @@ export function FortuneCard({ date, userProfile, onSetupProfile }: FortuneCardPr
             className="mt-2 flex justify-end px-1">
             <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.95 }}
               onClick={handleShare} disabled={sharing}
-              className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/3 text-white/30 text-xs px-4 py-2 hover:border-amber-400/18 hover:text-amber-300/55 transition-all disabled:opacity-40">
+              className="flex items-center gap-2 rounded-xl border style={{ borderColor:"var(--border-subtle)" }} bg-transparent text-white/30 text-xs px-4 py-2 hover:border-amber-400/18 hover:text-amber-300/55 transition-all disabled:opacity-40">
               {sharing
                 ? <><motion.span animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>⟳</motion.span> Đang tạo...</>
                 : <><span>📤</span> Tải ảnh chia sẻ Story</>}
