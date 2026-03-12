@@ -1,7 +1,6 @@
 // ============================================================
-// App.tsx — Huyền Cơ Các Phase 5
-// Tabs: Lịch · Thầy · Tiện Ích · Xem Tuổi · Mệnh
-// Light / Dark mode · SEO ready
+// App.tsx — Lịch Vạn Niên AI 2026 Phase 6
+// Tabs: Lịch · Hỏi Thầy · Xem Ngày · Tiện Ích · Bản Mệnh
 // ============================================================
 
 import { useState, useEffect, useCallback } from "react";
@@ -10,22 +9,21 @@ import { CalendarBoard }    from "./components/CalendarBoard";
 import { PersonalEnergy }   from "./components/PersonalEnergy";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { AiTab }            from "./tabs/AiTab";
-import { OracleTab }        from "./tabs/OracleTab";
 import { ProfileTab }       from "./tabs/ProfileTab";
 import { UtilsTab }         from "./tabs/UtilsTab";
 import { ThayTab }          from "./tabs/ThayTab";
-import { XemTuoiTab }       from "./tabs/XemTuoiTab";
 import { TuviTab }          from "./tabs/TuviTab";
+import { UtilityTab }       from "./tabs/UtilityTab";
 import { buildUserProfile, UserProfile } from "./utils/astrology";
 
-type TabId = "calendar" | "thay" | "utils" | "tuoi" | "profile";
+type TabId = "calendar" | "thay" | "utils" | "tienich" | "profile";
 
 const TABS: { id: TabId; icon: string; label: string }[] = [
-  { id:"calendar", icon:"📅", label:"Lịch"    },
-  { id:"thay",     icon:"🔮", label:"Hỏi Thầy"},
-  { id:"utils",    icon:"🗓", label:"Xem Ngày" },
-  { id:"tuoi",     icon:"👫", label:"Xem Tuổi"},
-  { id:"profile",  icon:"👤", label:"Bản Mệnh"},
+  { id:"calendar", icon:"📅", label:"Lịch"     },
+  { id:"thay",     icon:"🔮", label:"Hỏi Thầy" },
+  { id:"utils",    icon:"🗓", label:"Xem Ngày"  },
+  { id:"tienich",  icon:"🧭", label:"Tiện Ích"  },
+  { id:"profile",  icon:"👤", label:"Bản Mệnh"  },
 ];
 const TAB_ORDER = TABS.map(t => t.id);
 
@@ -50,23 +48,15 @@ export default function App() {
     try { return localStorage.getItem("hcc_theme") !== "light"; } catch { return true; }
   });
 
-  // Apply theme
   useEffect(() => {
     const html = document.documentElement;
     if (isDark) { html.classList.add("dark"); html.classList.remove("light"); }
     else        { html.classList.remove("dark"); html.classList.add("light"); }
     try { localStorage.setItem("hcc_theme", isDark ? "dark" : "light"); } catch {}
-    // Update theme-color meta
     const meta = document.querySelector("meta[name='theme-color']:not([media])");
-    if (!meta) {
-      const m = document.createElement("meta");
-      m.setAttribute("name","theme-color");
-      m.setAttribute("content", isDark ? "#080C18" : "#FEF9EE");
-      document.head.appendChild(m);
-    }
+    if (meta) meta.setAttribute("content", isDark ? "#080C18" : "#FEF9EE");
   }, [isDark]);
 
-  // Load profile
   useEffect(() => {
     const saved = localStorage.getItem("huyen_co_cac_birth_year");
     if (saved) { const y=parseInt(saved,10); if (!isNaN(y)) setProfile(buildUserProfile(y)); }
@@ -78,7 +68,6 @@ export default function App() {
   }, [tab]);
 
   const dir = TAB_ORDER.indexOf(tab) > TAB_ORDER.indexOf(prevTab) ? 1 : -1;
-
   const today = startOfDay(new Date());
   const isToday = isSameDay(viewDate, today);
 
@@ -91,18 +80,12 @@ export default function App() {
   return (
     <div className="relative min-h-screen max-w-md mx-auto flex flex-col overflow-hidden"
       style={{ background: "var(--bg-base)" }}>
-
-      {/* Background decoration */}
       <Background isDark={isDark} />
-
-      {/* Header */}
       <AppHeader
         isDark={isDark} onToggleTheme={() => setIsDark(d => !d)}
         tab={tab} viewDate={viewDate} isToday={isToday}
         onPrev={handlePrev} onNext={handleNext} onToday={goToday}
       />
-
-      {/* Main content */}
       <main className="relative flex-1 overflow-y-auto overflow-x-hidden pb-24">
         <AnimatePresence mode="wait" custom={dir}>
           <motion.div key={tab} custom={dir} variants={pageVariants}
@@ -111,33 +94,27 @@ export default function App() {
               <CalendarContent viewDate={viewDate} profile={profile}
                 onSetupProfile={() => changeTab("profile")} />
             )}
-            {tab === "thay" && <ThayTab birthYear={profile?.birthYear} />}
-            {tab === "utils" && <UtilsTab birthYear={profile?.birthYear} />}
-            {tab === "tuoi"  && <XemTuoiTab birthYear={profile?.birthYear} />}
+            {tab === "thay"    && <ThayTab birthYear={profile?.birthYear} />}
+            {tab === "utils"   && <UtilsTab birthYear={profile?.birthYear} />}
+            {tab === "tienich" && <UtilityTab birthYear={profile?.birthYear} />}
             {tab === "profile" && (
               <div>
                 <ProfileTab userProfile={profile} onProfileChange={setProfile} />
-                <div className="mx-4 mb-2 mt-4">
-                  <Divider label="Tử Vi Trọn Đời" />
-                </div>
+                <div className="mx-4 mb-2 mt-4"><Divider label="Tử Vi Trọn Đời" /></div>
                 <TuviTab birthYear={profile?.birthYear} />
-                <div className="mx-4 mb-2 mt-4">
-                  <Divider label="AI Luận Giải" />
-                </div>
+                <div className="mx-4 mb-2 mt-4"><Divider label="AI Luận Giải" /></div>
                 <AiTab date={viewDate} userProfile={profile} onSetupProfile={() => {}} />
               </div>
             )}
           </motion.div>
         </AnimatePresence>
       </main>
-
       <PWAInstallPrompt />
       <BottomNav tab={tab} onTabChange={changeTab} />
     </div>
   );
 }
 
-// ─── Background ───────────────────────────────────────────────
 function Background({ isDark }: { isDark: boolean }) {
   return (
     <div className="fixed inset-0 max-w-md mx-auto pointer-events-none overflow-hidden" aria-hidden>
@@ -162,29 +139,24 @@ function Background({ isDark }: { isDark: boolean }) {
   );
 }
 
-// ─── Header ───────────────────────────────────────────────────
 function AppHeader({ isDark, onToggleTheme, tab, viewDate, isToday, onPrev, onNext, onToday }: {
   isDark: boolean; onToggleTheme: () => void;
   tab: TabId; viewDate: Date; isToday: boolean;
   onPrev: ()=>void; onNext: ()=>void; onToday: ()=>void;
 }) {
   const showNav = tab === "calendar";
-
   return (
     <header className="relative z-20 px-4 pt-4 pb-3 border-b"
       style={{ background:"var(--header-bg)", backdropFilter:"blur(16px)", borderColor:"var(--border-subtle)" }}>
       <div className="flex items-center justify-between gap-2">
-        {/* Brand */}
         <div>
-          <h1 className="font-display font-bold text-lg leading-none" style={{ color:"var(--text-primary)" }}>
-            Huyền Cơ Các
+          <h1 className="font-display font-bold text-base leading-tight" style={{ color:"var(--text-primary)" }}>
+            Lịch Vạn Niên AI 2026
           </h1>
-          <p className="text-[10px] tracking-[0.2em] uppercase mt-0.5" style={{ color:"var(--text-muted)" }}>
-            Lịch · Phong Thủy · AI
+          <p className="text-[10px] tracking-[0.15em] uppercase mt-0.5" style={{ color:"var(--text-muted)" }}>
+            Lịch Âm · Phong Thủy · AI
           </p>
         </div>
-
-        {/* Day nav (calendar only) */}
         <AnimatePresence>
           {showNav && (
             <motion.div initial={{ opacity:0, scale:0.9 }} animate={{ opacity:1, scale:1 }} exit={{ opacity:0 }}
@@ -203,8 +175,6 @@ function AppHeader({ isDark, onToggleTheme, tab, viewDate, isToday, onPrev, onNe
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Theme toggle */}
         <motion.button whileTap={{ scale:0.9 }} onClick={onToggleTheme}
           className="w-9 h-9 rounded-xl flex items-center justify-center text-lg"
           style={{ background:"var(--bg-elevated)", border:"1px solid var(--border-subtle)" }}
@@ -226,7 +196,6 @@ function NavBtn({ onClick, disabled, children }: { onClick:()=>void; disabled?:b
   );
 }
 
-// ─── Calendar Content ─────────────────────────────────────────
 function CalendarContent({ viewDate, profile, onSetupProfile }: {
   viewDate: Date; profile: UserProfile | null; onSetupProfile: ()=>void;
 }) {
@@ -237,10 +206,10 @@ function CalendarContent({ viewDate, profile, onSetupProfile }: {
       <PersonalEnergy userProfile={profile} currentDate={viewDate} onSetupProfile={onSetupProfile} />
       <Divider label="Khám Phá" />
       <div className="mx-4 grid grid-cols-2 gap-2.5">
-        <QuickCard emoji="🔮" title="Hỏi Thầy Lão Đại" desc="64 quẻ Kinh Dịch + AI" />
-        <QuickCard emoji="📅" title="Xem Ngày Tốt" desc="18 mục đích, dữ liệu thật" />
-        <QuickCard emoji="👫" title="Xem Tuổi Hợp" desc="Cặp đôi & làm ăn" />
-        <QuickCard emoji="✨" title="AI Luận Giải" desc="Thần số học & vận số" />
+        <QuickCard emoji="🔮" title="Hỏi Thầy Lão Đại"  desc="64 quẻ Kinh Dịch + AI" />
+        <QuickCard emoji="📅" title="Xem Ngày Tốt"      desc="18 mục đích, dữ liệu thật" />
+        <QuickCard emoji="🧭" title="La Bàn Phong Thủy" desc="Hướng nhà, bàn thờ, bếp" />
+        <QuickCard emoji="🙏" title="Văn Khấn"          desc="25 bài, Smart Fill tên/địa chỉ" />
       </div>
     </div>
   );
@@ -266,12 +235,12 @@ function Divider({ label }: { label: string }) {
   );
 }
 
-// ─── Bottom Nav ───────────────────────────────────────────────
 function BottomNav({ tab, onTabChange }: { tab: TabId; onTabChange: (t:TabId)=>void }) {
   return (
     <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-30"
       aria-label="Điều hướng chính">
-      <div className="h-4 pointer-events-none" style={{ background:"linear-gradient(to top, var(--bg-base), transparent)" }} />
+      <div className="h-4 pointer-events-none"
+        style={{ background:"linear-gradient(to top, var(--bg-base), transparent)" }} />
       <div className="border-t tab-bar-safe px-2 pt-2"
         style={{ background:"var(--tab-bar-bg)", backdropFilter:"blur(20px)", borderColor:"var(--border-subtle)" }}>
         <div className="flex items-center justify-around">
