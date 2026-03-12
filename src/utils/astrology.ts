@@ -264,7 +264,8 @@ function sunLongitude(jdn: number): number {
 }
 
 function getNewMoonDay(k: number, tz: number): number {
-  return Math.floor(newMoon(k) + 0.5 + tz / 24);
+  // Returns dayNumber (JDN - 2415021) so comparisons in solarToLunar are consistent
+  return Math.floor(newMoon(k) + 0.5 + tz / 24) - 2415021;
 }
 
 function getLunarMonth11(year: number, tz: number): number {
