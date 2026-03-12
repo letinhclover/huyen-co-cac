@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0B0F1F"/>
+      <stop offset="100%" style="stop-color:#070B17"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1200" height="630" fill="none" stroke="#F5A623" stroke-width="3" opacity="0.3"/>
+  <!-- Grid lines -->
+  <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+    <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#F5A623" stroke-width="0.4" opacity="0.12"/>
+  </pattern>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <!-- Glow circle -->
+  <circle cx="600" cy="315" r="240" fill="none" stroke="#F5A623" stroke-width="2" opacity="0.15"/>
+  <circle cx="600" cy="315" r="180" fill="none" stroke="#F5A623" stroke-width="1.5" opacity="0.1"/>
+  <!-- Calendar icon -->
+  <rect x="490" y="180" width="220" height="200" rx="24" fill="#1e2a50" stroke="#F5A623" stroke-width="3"/>
+  <rect x="490" y="180" width="220" height="52" rx="24" fill="#F5A623"/>
+  <rect x="490" y="208" width="220" height="24" fill="#F5A623"/>
+  <circle cx="540" cy="174" r="10" fill="#c8850a"/>
+  <circle cx="660" cy="174" r="10" fill="#c8850a"/>
+  <!-- Calendar dots -->
+  <rect x="516" y="266" width="16" height="16" rx="4" fill="#F5A623" opacity="0.8"/>
+  <rect x="548" y="266" width="16" height="16" rx="4" fill="#F5A623" opacity="0.6"/>
+  <rect x="580" y="266" width="16" height="16" rx="4" fill="#F5A623" opacity="0.8"/>
+  <rect x="612" y="266" width="16" height="16" rx="4" fill="#F5A623" opacity="0.6"/>
+  <rect x="644" y="266" width="16" height="16" rx="4" fill="#F87171" opacity="0.9"/>
+  <rect x="516" y="300" width="16" height="16" rx="4" fill="#F5A623" opacity="0.5"/>
+  <rect x="548" y="300" width="16" height="16" rx="4" fill="#F5A623" opacity="0.7"/>
+  <rect x="580" y="300" width="16" height="16" rx="4" fill="#4ade80" opacity="0.8"/>
+  <!-- Title -->
+  <text x="600" y="435" text-anchor="middle" font-family="serif" font-size="52" font-weight="bold" fill="#F5A623">Lịch Vạn Niên AI 2026</text>
+  <text x="600" y="490" text-anchor="middle" font-family="sans-serif" font-size="26" fill="#a0a8c0">Lịch Âm · Phong Thủy · Hỏi Thầy AI</text>
+  <text x="600" y="540" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#60698a">lich-van-nien.pages.dev</text>
+</svg>

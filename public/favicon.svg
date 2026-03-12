@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a2240"/>
+      <stop offset="100%" stop-color="#080C18"/>
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="22" fill="url(#bg)"/>
+  <!-- Calendar body -->
+  <rect x="14" y="28" width="72" height="60" rx="10" fill="none" stroke="#F5A623" stroke-width="3.5"/>
+  <!-- Header bar -->
+  <rect x="14" y="28" width="72" height="22" rx="10" fill="#F5A623"/>
+  <rect x="14" y="40" width="72" height="10" fill="#F5A623"/>
+  <!-- Hooks -->
+  <line x1="32" y1="18" x2="32" y2="34" stroke="#F5A623" stroke-width="5.5" stroke-linecap="round"/>
+  <line x1="68" y1="18" x2="68" y2="34" stroke="#F5A623" stroke-width="5.5" stroke-linecap="round"/>
+  <!-- Big number 1 (today) -->
+  <text x="50" y="77" text-anchor="middle" font-family="serif" font-size="32" font-weight="900" fill="#F5A623">1</text>
+  <!-- Star -->
+  <text x="77" y="60" text-anchor="middle" font-family="serif" font-size="14" fill="#F5A623" opacity="0.7">✦</text>
+</svg>
