@@ -7,30 +7,48 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico", "apple-touch-icon.png"],
+      includeAssets: ["favicon.ico", "apple-touch-icon.png", "favicon.svg"],
       manifest: {
-        name: "Huyền Cơ Các",
-        short_name: "Huyền Cơ Các",
-        description: "Lịch Vạn Niên & Tâm Linh Cá Nhân Hóa",
+        name: "Lịch Vạn Niên AI 2026 - Lịch Âm",
+        short_name: "Lịch VN AI",
+        description: "Lịch vạn niên, âm lịch 2026, xem ngày tốt xấu, phong thủy, văn khấn, hỏi thầy AI",
         theme_color: "#080C18",
         background_color: "#080C18",
         display: "standalone",
         orientation: "portrait",
         scope: "/",
         start_url: "/",
+        lang: "vi",
+        categories: ["lifestyle", "utilities"],
         icons: [
+          { src:"pwa-192x192.png", sizes:"192x192", type:"image/png" },
+          { src:"pwa-512x512.png", sizes:"512x512", type:"image/png", purpose:"any maskable" },
+        ],
+        shortcuts: [
+          { name:"Xem Ngày Hôm Nay", url:"/", icons:[{ src:"pwa-192x192.png", sizes:"192x192" }] },
+          { name:"Hỏi Thầy Lão Đại", url:"/?tab=thay", icons:[{ src:"pwa-192x192.png", sizes:"192x192" }] },
+        ],
+      },
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        runtimeCaching: [
           {
-            src: "pwa-192x192.png",
-            sizes: "192x192",
-            type: "image/png",
-          },
-          {
-            src: "pwa-512x512.png",
-            sizes: "512x512",
-            type: "image/png",
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: "CacheFirst",
+            options: { cacheName:"google-fonts-cache", expiration:{ maxEntries:10, maxAgeSeconds:60*60*24*365 } },
           },
         ],
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom"],
+          motion: ["framer-motion"],
+        },
+      },
+    },
+  },
 });

@@ -5,49 +5,60 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 
-    <!-- Theme color per mode -->
+    <!-- Theme color -->
     <meta name="theme-color" content="#080C18" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#FEF9EE" media="(prefers-color-scheme: light)" />
 
-    <!-- PWA -->
+    <!-- PWA iOS (bắt buộc cho iPhone) -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Huyền Cơ Các" />
+    <meta name="apple-mobile-web-app-title" content="Lịch VN AI" />
     <meta name="mobile-web-app-capable" content="yes" />
 
+    <!-- iOS splash / touch icon -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
+    <!-- iOS launch screens (portrait) -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="apple-touch-startup-image" href="/pwa-512x512.png"
+      media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" />
+
     <!-- SEO Primary -->
-    <title>Huyền Cơ Các ✦ Lịch Vạn Niên & Xem Ngày Tốt Xấu 2025-2026</title>
-    <meta name="description" content="Xem lịch vạn niên, ngày tốt xấu, 114 sao cát hung, 12 trực, hỏi thầy phong thủy AI, xem tuổi hợp, 64 quẻ Kinh Dịch — miễn phí, chính xác, cá nhân hóa." />
-    <meta name="keywords" content="lịch vạn niên, xem ngày tốt, ngày tốt xấu 2026, hỏi thầy phong thủy, 64 quẻ kinh dịch, xem tuổi hợp, ngày tốt khai trương, ngày tốt cưới hỏi, âm lịch 2026, huyền cơ các" />
-    <meta name="author" content="Huyền Cơ Các" />
+    <title>Lịch Vạn Niên AI 2026 - Lịch Âm | Xem Ngày Tốt Xấu Chính Xác</title>
+    <meta name="description" content="Lịch vạn niên 2026, lịch âm, xem ngày tốt xấu, 114 sao cát hung, 12 trực, hỏi thầy AI, la bàn phong thủy, văn khấn 25 bài, xem tuổi hợp — miễn phí, chính xác." />
+    <meta name="keywords" content="lịch vạn niên 2026, lịch âm 2026, xem ngày tốt, ngày tốt xấu, hỏi thầy phong thủy AI, la bàn phong thủy, văn khấn, xem tuổi hợp, 64 quẻ kinh dịch, âm lịch 2026, bat trach" />
+    <meta name="author" content="Lịch Vạn Niên AI 2026" />
     <link rel="canonical" href="https://huyen-co-cac.pages.dev/" />
 
     <!-- Open Graph -->
     <meta property="og:type"        content="website" />
     <meta property="og:url"         content="https://huyen-co-cac.pages.dev/" />
-    <meta property="og:title"       content="Huyền Cơ Các — Lịch Vạn Niên & Phong Thủy Cá Nhân Hóa" />
-    <meta property="og:description" content="Xem ngày tốt xấu chính xác với 114 sao cát hung. Hỏi thầy AI 24/7. 64 quẻ Kinh Dịch. Xem tuổi hợp. Miễn phí." />
+    <meta property="og:title"       content="Lịch Vạn Niên AI 2026 - Lịch Âm | Xem Ngày Tốt Xấu" />
+    <meta property="og:description" content="Xem ngày tốt xấu chính xác, hỏi thầy AI, la bàn phong thủy Bát Trạch, văn khấn 25 bài. Miễn phí, offline." />
     <meta property="og:image"       content="https://huyen-co-cac.pages.dev/og-image.png" />
     <meta property="og:locale"      content="vi_VN" />
+    <meta property="og:site_name"   content="Lịch Vạn Niên AI 2026" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card"        content="summary_large_image" />
-    <meta name="twitter:title"       content="Huyền Cơ Các — Lịch Vạn Niên & Phong Thủy AI" />
-    <meta name="twitter:description" content="Xem ngày tốt, hỏi thầy AI, 64 quẻ Kinh Dịch — cá nhân hóa theo tuổi & mệnh" />
+    <meta name="twitter:title"       content="Lịch Vạn Niên AI 2026 - Lịch Âm" />
+    <meta name="twitter:description" content="Xem ngày tốt, hỏi thầy AI, la bàn phong thủy, văn khấn — cá nhân hóa theo tuổi & mệnh" />
     <meta name="twitter:image"       content="https://huyen-co-cac.pages.dev/og-image.png" />
 
     <!-- Preconnect -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preconnect" href="https://api.groq.com" />
 
     <!-- Structured Data -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "WebApplication",
-      "name": "Huyền Cơ Các",
-      "description": "Lịch vạn niên, xem ngày tốt xấu, phong thủy cá nhân hóa với AI",
+      "name": "Lịch Vạn Niên AI 2026 - Lịch Âm",
+      "description": "Lịch vạn niên, xem ngày tốt xấu, la bàn phong thủy, văn khấn, hỏi thầy AI",
       "url": "https://huyen-co-cac.pages.dev/",
       "applicationCategory": "LifestyleApplication",
       "operatingSystem": "Any",
@@ -61,11 +72,11 @@
       (function() {
         try {
           var theme = localStorage.getItem('hcc_theme');
+          var html = document.documentElement;
           if (theme === 'light') {
-            document.documentElement.classList.remove('dark');
-            document.documentElement.classList.add('light');
+            html.classList.remove('dark'); html.classList.add('light');
           } else {
-            document.documentElement.classList.add('dark');
+            html.classList.add('dark'); html.classList.remove('light');
           }
         } catch(e) {}
       })();
