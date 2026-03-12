@@ -142,7 +142,7 @@ export function XemTuoiTab({ birthYear }: Props) {
   const nhA = getNapAm(yearA), nhB = getNapAm(yearB);
 
   return (
-    <div className="flex flex-col pb-24">
+    <div className="flex flex-col">
       {/* Header */}
       <div className="px-4 pt-4 pb-3 border-b" style={{ borderColor: "var(--border-subtle)" }}>
         <div className="flex items-center gap-3 mb-3">
