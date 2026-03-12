@@ -11,16 +11,6 @@ interface Props {
   compact?: boolean;
 }
 
-function Stars({ score, max=5 }: { score:number; max?:number }) {
-  return (
-    <div className="flex gap-0.5">
-      {Array.from({length:max}).map((_,i) => (
-        <span key={i} className="text-xs" style={{ color: i<score ? "var(--gold)" : "var(--border-medium)" }}>★</span>
-      ))}
-    </div>
-  );
-}
-
 export function DayDetailPanel({ date, compact=false }: Props) {
   const info: DayAnalysis = useMemo(
     () => analyzeDayFull(date.getDate(), date.getMonth()+1, date.getFullYear()),
@@ -87,24 +77,6 @@ export function DayDetailPanel({ date, compact=false }: Props) {
               style={{ background:"rgba(239,68,68,0.08)", color:"var(--accent-red)", border:"1px solid rgba(239,68,68,0.2)" }}>
               ⚠ {x}
             </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Rating grid */}
-      <div className="card p-4">
-        <p className="section-label mb-3">Đánh Giá Theo Mục Đích</p>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-          {[
-            { label:"🏗 Xây dựng",   key:"xayDung" as const },
-            { label:"💼 Kinh doanh", key:"kinhDoanh" as const },
-            { label:"💍 Cưới hỏi",   key:"cuoiHoi" as const },
-            { label:"⚱ An táng",    key:"anTang" as const },
-          ].map(({ label, key }) => (
-            <div key={key} className="flex items-center justify-between">
-              <span className="text-xs" style={{ color:"var(--text-muted)" }}>{label}</span>
-              <Stars score={info.rating[key]} />
-            </div>
           ))}
         </div>
       </div>

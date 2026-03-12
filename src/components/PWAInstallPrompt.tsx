@@ -1,7 +1,8 @@
 // ============================================================
-// PWAInstallPrompt.tsx — iOS + Android Install Banner
+// PWAInstallPrompt.tsx — Banner Cài Đặt PWA Nổi Bật
 // iOS: hướng dẫn thủ công (Safari không có beforeinstallprompt)
 // Android: dùng beforeinstallprompt API
+// Hiện ngay khi vào lần đầu, không delay lâu
 // ============================================================
 
 import { useState, useEffect, useCallback } from "react";
@@ -16,135 +17,166 @@ function isIOS() {
   return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as unknown as {MSStream?:unknown}).MSStream;
 }
 function isSafari() {
-  return /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+  return /Safari/.test(navigator.userAgent) && !/CriOS|Chrome|FxiOS/.test(navigator.userAgent);
 }
 function isStandalone() {
   return window.matchMedia("(display-mode: standalone)").matches ||
-         (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
 }
+
+const DISMISS_KEY = "hcc_pwa_dismissed_v3";
+const COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000; // 3 ngày
 
 export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [showAndroid,    setShowAndroid]    = useState(false);
-  const [showIOS,        setShowIOS]        = useState(false);
-  const [installed,      setInstalled]      = useState(false);
+  const [show, setShow] = useState(false);
+  const [platform, setPlatform] = useState<"android"|"ios"|null>(null);
+  const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
-    // Already installed or dismissed
-    if (isStandalone()) return;
-    const dismissed = localStorage.getItem("hcc_pwa_dismissed_v2");
-    if (dismissed && Date.now() - parseInt(dismissed) < 7*24*60*60*1000) return; // 7 ngày
+    if (isStandalone()) return; // Đã cài rồi
+    const dismissed = localStorage.getItem(DISMISS_KEY);
+    if (dismissed && Date.now() - parseInt(dismissed) < COOLDOWN_MS) return;
 
     if (isIOS() && isSafari()) {
-      // Hiện banner iOS sau 3 giây
-      setTimeout(() => setShowIOS(true), 3000);
+      setPlatform("ios");
+      setTimeout(() => setShow(true), 1800);
     } else {
-      // Android / Chrome
+      // Android/Chrome: chờ beforeinstallprompt
       const handler = (e: Event) => {
         e.preventDefault();
         setDeferredPrompt(e as BeforeInstallPromptEvent);
-        setShowAndroid(true);
+        setPlatform("android");
+        setShow(true);
       };
       window.addEventListener("beforeinstallprompt", handler);
       return () => window.removeEventListener("beforeinstallprompt", handler);
     }
   }, []);
 
+  // Listen for successful install
+  useEffect(() => {
+    const handler = () => { setInstalled(true); setShow(false); };
+    window.addEventListener("appinstalled", handler);
+    return () => window.removeEventListener("appinstalled", handler);
+  }, []);
+
   const handleInstall = useCallback(async () => {
     if (!deferredPrompt) return;
     await deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") setInstalled(true);
-    setShowAndroid(false);
+    if (outcome === "accepted") { setInstalled(true); setShow(false); }
+    else dismiss();
     setDeferredPrompt(null);
   }, [deferredPrompt]);
 
-  const handleDismiss = useCallback(() => {
-    setShowAndroid(false);
-    setShowIOS(false);
-    try { localStorage.setItem("hcc_pwa_dismissed_v2", Date.now().toString()); } catch {}
+  const dismiss = useCallback(() => {
+    setShow(false);
+    try { localStorage.setItem(DISMISS_KEY, Date.now().toString()); } catch {}
   }, []);
-
-  const isVisible = (showAndroid || showIOS) && !installed;
 
   return (
     <AnimatePresence>
-      {isVisible && (
+      {show && !installed && (
         <motion.div
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 100, opacity: 0 }}
-          transition={{ type: "spring", damping: 22, stiffness: 200 }}
-          className="fixed bottom-24 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-50">
-          <div className="card p-4" style={{ boxShadow:"var(--shadow-float)" }}>
-            {showAndroid && (
-              <div className="flex items-start gap-3">
-                <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
-                  style={{ background:"var(--gold-bg)", border:"1px solid var(--gold-border)" }}>
-                  📲
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold mb-0.5" style={{ color:"var(--text-primary)" }}>
-                    Cài về màn hình chính
-                  </p>
-                  <p className="text-xs mb-3" style={{ color:"var(--text-muted)" }}>
-                    Dùng nhanh hơn, không cần mạng, không quảng cáo
-                  </p>
+          initial={{ y: 120, opacity: 0 }}
+          animate={{ y: 0, opacity: 1, transition: { type:"spring", damping:22, stiffness:200 } }}
+          exit={{ y: 120, opacity: 0, transition: { duration: 0.22 } }}
+          className="fixed bottom-[88px] left-1/2 -translate-x-1/2 w-[calc(100%-24px)] max-w-sm z-50"
+        >
+          <div className="rounded-3xl overflow-hidden"
+            style={{ boxShadow:"0 20px 60px rgba(0,0,0,0.5), 0 0 0 1.5px var(--gold-border)" }}>
+            {/* Gold top stripe */}
+            <div className="h-1" style={{ background:"linear-gradient(90deg,var(--gold),var(--gold-light))" }}/>
+            <div className="px-4 py-4" style={{ background:"var(--bg-elevated)" }}>
+
+              {/* Android */}
+              {platform === "android" && (
+                <>
+                  <div className="flex items-center gap-3 mb-3">
+                    {/* App icon */}
+                    <div className="w-12 h-12 rounded-2xl overflow-hidden flex-shrink-0"
+                      style={{ border:"1.5px solid var(--gold-border)" }}>
+                      <img src="/pwa-192x192.png" alt="icon" className="w-full h-full"/>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm" style={{ color:"var(--text-primary)" }}>
+                        Cài Lịch Vạn Niên AI
+                      </p>
+                      <p className="text-xs" style={{ color:"var(--text-muted)" }}>
+                        Dùng nhanh hơn · offline · không quảng cáo
+                      </p>
+                    </div>
+                    <button onClick={dismiss}
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-xs flex-shrink-0"
+                      style={{ background:"var(--bg-surface)", color:"var(--text-faint)" }}>✕</button>
+                  </div>
                   <div className="flex gap-2">
-                    <button onClick={handleDismiss}
-                      className="btn-ghost text-xs px-3 py-2 rounded-xl flex-1">
-                      Bỏ qua
+                    <button onClick={dismiss}
+                      className="flex-1 py-2.5 rounded-2xl text-sm font-semibold"
+                      style={{ background:"var(--bg-surface)", color:"var(--text-muted)" }}>
+                      Để sau
                     </button>
-                    <motion.button whileTap={{ scale:0.97 }} onClick={handleInstall}
-                      className="btn-gold text-xs px-4 py-2 rounded-xl flex-1 font-bold">
-                      Cài Đặt Ngay ›
+                    <motion.button whileTap={{ scale:0.96 }} onClick={handleInstall}
+                      className="flex-[2] py-2.5 rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-2"
+                      style={{ background:"linear-gradient(135deg,#B8720A,#D4920D)" }}>
+                      <span className="text-base">📲</span> Cài đặt ngay
                     </motion.button>
                   </div>
-                </div>
-              </div>
-            )}
+                </>
+              )}
 
-            {showIOS && (
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">📲</span>
-                    <p className="text-sm font-bold" style={{ color:"var(--text-primary)" }}>
-                      Cài Lịch Vạn Niên AI
-                    </p>
-                  </div>
-                  <button onClick={handleDismiss} className="text-lg" style={{ color:"var(--text-faint)" }}>✕</button>
-                </div>
-                <p className="text-xs mb-3" style={{ color:"var(--text-muted)" }}>
-                  Dùng không cần mạng, không quảng cáo, trải nghiệm mượt hơn
-                </p>
-                {/* iOS instructions */}
-                <div className="rounded-xl p-3 flex flex-col gap-2"
-                  style={{ background:"var(--bg-elevated)", border:"1px solid var(--border-subtle)" }}>
-                  <p className="text-[11px] font-semibold" style={{ color:"var(--text-secondary)" }}>
-                    Cách cài trên iPhone / iPad:
-                  </p>
-                  {[
-                    { step:"1", text:'Bấm vào nút Chia sẻ', icon:"⬆️", note:"(dưới cùng của Safari)" },
-                    { step:"2", text:'Chọn "Thêm vào Màn Hình Chính"', icon:"➕", note:"(cuộn xuống tìm trong danh sách)" },
-                    { step:"3", text:"Bấm Thêm ở góc phải trên", icon:"✅", note:"(góc phải trên cùng)" },
-                  ].map(({ step, text, icon, note }) => (
-                    <div key={step} className="flex items-start gap-2.5">
-                      <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5"
-                        style={{ background:"var(--gold-bg)", color:"var(--gold)", border:"1px solid var(--gold-border)" }}>
-                        {step}
+              {/* iOS */}
+              {platform === "ios" && (
+                <>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl overflow-hidden flex-shrink-0"
+                        style={{ border:"1.5px solid var(--gold-border)" }}>
+                        <img src="/apple-touch-icon.png" alt="icon" className="w-full h-full"/>
                       </div>
                       <div>
-                        <span className="text-xs font-medium" style={{ color:"var(--text-primary)" }}>
-                          {icon} {text}
-                        </span>
-                        <span className="text-[10px] block" style={{ color:"var(--text-muted)" }}>{note}</span>
+                        <p className="font-bold text-sm" style={{ color:"var(--text-primary)" }}>
+                          Thêm vào màn hình chính
+                        </p>
+                        <p className="text-xs" style={{ color:"var(--text-muted)" }}>
+                          Dùng như app thật, không cần mạng
+                        </p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                    <button onClick={dismiss}
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-xs"
+                      style={{ background:"var(--bg-surface)", color:"var(--text-faint)" }}>✕</button>
+                  </div>
+                  <div className="rounded-2xl px-3 py-3 text-sm space-y-2"
+                    style={{ background:"var(--bg-surface)", border:"1px solid var(--border-subtle)" }}>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">1️⃣</span>
+                      <p style={{ color:"var(--text-secondary)" }}>
+                        Nhấn nút <strong style={{ color:"var(--text-primary)" }}>Chia sẻ</strong> <span className="text-base">⬆️</span> ở thanh Safari
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">2️⃣</span>
+                      <p style={{ color:"var(--text-secondary)" }}>
+                        Chọn <strong style={{ color:"var(--text-primary)" }}>Thêm vào màn hình chính</strong> <span className="text-base">➕</span>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">3️⃣</span>
+                      <p style={{ color:"var(--text-secondary)" }}>
+                        Nhấn <strong style={{ color:"var(--gold)" }}>Thêm</strong> để hoàn tất
+                      </p>
+                    </div>
+                  </div>
+                  <button onClick={dismiss}
+                    className="w-full mt-2 py-2.5 rounded-2xl text-sm font-semibold"
+                    style={{ background:"var(--bg-surface)", color:"var(--text-muted)" }}>
+                    Đóng
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </motion.div>
       )}
