@@ -109,36 +109,6 @@ export function DayDetailPanel({ date, compact=false }: Props) {
         </div>
       </div>
 
-      {/* Sao tốt */}
-      {info.saoTot.length > 0 && (
-        <div className="card p-4">
-          <p className="section-label mb-2">✨ Sao Tốt</p>
-          <div className="flex flex-wrap gap-1.5">
-            {info.saoTot.slice(0,6).map(s => (
-              <span key={s.id} className="text-xs px-2.5 py-1 rounded-full font-medium"
-                style={{ background:"var(--gold-bg)", color:"var(--gold)", border:"1px solid var(--gold-border)" }}>
-                {s.name}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Sao xấu */}
-      {info.saoXau.length > 0 && (
-        <div className="card p-4">
-          <p className="section-label mb-2">🚫 Sao Xấu</p>
-          <div className="flex flex-wrap gap-1.5">
-            {info.saoXau.slice(0,6).map(s => (
-              <span key={s.id} className="text-xs px-2.5 py-1 rounded-full"
-                style={{ background:"rgba(239,68,68,0.08)", color:"var(--accent-red)", border:"1px solid rgba(239,68,68,0.2)" }}>
-                {s.name}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
     </motion.div>
   );
 }
