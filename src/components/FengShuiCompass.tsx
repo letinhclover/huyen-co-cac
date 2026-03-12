@@ -8,29 +8,32 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ─── Types ───────────────────────────────────────────────────
-interface KuaInfo {
-  kua: number;
-  cung: string;    // Tên cung
-  trach: "dong" | "tay";
-  tractName: string;
-  cat: DirectionSet;
-  hung: DirectionSet;
-}
-
-interface DirectionSet {
+interface CatSet {
   sinhKhi: string;
   thienY:  string;
   dieNien: string;
   phucVi:  string;
+}
+
+interface HungSet {
   tuyetMenh: string;
   nguQuy:    string;
   lucSat:    string;
   hoaHai:    string;
 }
 
+interface KuaInfo {
+  kua: number;
+  cung: string;
+  trach: "dong" | "tay";
+  tractName: string;
+  cat: CatSet;
+  hung: HungSet;
+}
+
 // ─── Bát Trạch Lookup Table ───────────────────────────────────
 // Source: Tứ Trạch phong thủy truyền thống
-const BAT_TRACH: Record<number, { cung:string; trach:"dong"|"tay"; tractName:string; cat:DirectionSet; hung:DirectionSet }> = {
+const BAT_TRACH: Record<number, { cung:string; trach:"dong"|"tay"; tractName:string; cat:CatSet; hung:HungSet }> = {
   1: {
     cung:"Khảm",  trach:"dong", tractName:"Đông Tứ Trạch",
     cat:  { sinhKhi:"Đông Nam", thienY:"Đông",     dieNien:"Nam",      phucVi:"Bắc"    },
