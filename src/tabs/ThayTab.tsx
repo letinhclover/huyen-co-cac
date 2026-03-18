@@ -7,6 +7,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { QUE_KINH_DICH, getQueMuc, QUE_MUC_STYLE, type Que } from "../data/divinations";
 import { playGieoQue } from "../utils/sounds";
+import { shareThayImage } from "../utils/shareImage";
 
 // ─── Groq AI call ─────────────────────────────────────────────
 const GROQ_URL   = "https://api.groq.com/openai/v1/chat/completions";
@@ -363,13 +364,27 @@ export function ThayTab({ birthYear }: Props) {
                 </motion.div>
               )}
 
-              {/* Reset */}
+              {/* Share + Reset */}
               {phase === "answered" && (
-                <motion.button whileTap={{ scale:0.97 }} onClick={handleReset}
-                  initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.8 }}
-                  className="btn-ghost w-full py-3 rounded-2xl text-sm font-medium">
-                  ↻ Hỏi câu khác
-                </motion.button>
+                <motion.div initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.8 }}
+                  className="flex gap-2">
+                  <motion.button whileTap={{ scale:0.97 }}
+                    onClick={() => que && luanGiai && shareThayImage({
+                      tenQue: que.tenDayDu,
+                      trieuTuong: que.trieuTuong,
+                      cauHoi,
+                      luanGiai,
+                    })}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl text-sm font-semibold"
+                    style={{ background:"var(--bg-elevated)", border:"1px solid var(--border-subtle)", color:"var(--text-secondary)" }}>
+                    📤 Chia sẻ
+                  </motion.button>
+                  <motion.button whileTap={{ scale:0.97 }} onClick={handleReset}
+                    className="flex-1 py-3 rounded-2xl text-sm font-medium"
+                    style={{ background:"var(--bg-elevated)", border:"1px solid var(--border-subtle)", color:"var(--text-muted)" }}>
+                    ↻ Hỏi câu khác
+                  </motion.button>
+                </motion.div>
               )}
             </motion.div>
           )}

@@ -1,5 +1,7 @@
 // ============================================================
-// FengShuiCompass.tsx — La Bàn Phong Thủy Bát Trạch v2
+// FengShuiCompass.tsx
+import { shareFengShuiImage } from "../utils/shareImage";
+// — La Bàn Phong Thủy Bát Trạch v2
 // Cảm biến: webkitCompassHeading (iOS) + 360-alpha (Android)
 // Animation: framer-motion spring — không giật
 // UI: SVG La Bàn sang trọng với vòng Bát Quái
@@ -15,28 +17,28 @@ interface KuaInfo { kua:number; cung:string; trach:"dong"|"tay"; tractName:strin
 
 // ─── Bát Trạch Lookup ────────────────────────────────────────
 const BAT_TRACH: Record<number,{cung:string;trach:"dong"|"tay";tractName:string;cat:CatSet;hung:HungSet}> = {
-  1:{ cung:"Khảm",  trach:"dong", tractName:"Đông Tứ Trạch",
+  1:{ cung:"Khảm",  trach:"dong", tractName:"Nhóm Hướng Đông",
       cat: { sinhKhi:"Đông Nam", thienY:"Đông",     dieNien:"Nam",      phucVi:"Bắc"    },
       hung:{ hoaHai:"Tây",       lucSat:"Đông Bắc", nguQuy:"Tây Nam",   tuyetMenh:"Tây Bắc" }},
-  2:{ cung:"Khôn",  trach:"tay",  tractName:"Tây Tứ Trạch",
+  2:{ cung:"Khôn",  trach:"tay",  tractName:"Nhóm Hướng Tây",
       cat: { sinhKhi:"Đông Bắc", thienY:"Tây",      dieNien:"Tây Bắc",  phucVi:"Tây Nam"},
       hung:{ hoaHai:"Bắc",       lucSat:"Nam",      nguQuy:"Đông Nam",  tuyetMenh:"Đông" }},
-  3:{ cung:"Chấn",  trach:"dong", tractName:"Đông Tứ Trạch",
+  3:{ cung:"Chấn",  trach:"dong", tractName:"Nhóm Hướng Đông",
       cat: { sinhKhi:"Nam",      thienY:"Bắc",      dieNien:"Đông Nam", phucVi:"Đông"   },
       hung:{ hoaHai:"Đông Bắc",  lucSat:"Tây",      nguQuy:"Tây Bắc",  tuyetMenh:"Tây Nam" }},
-  4:{ cung:"Tốn",   trach:"dong", tractName:"Đông Tứ Trạch",
+  4:{ cung:"Tốn",   trach:"dong", tractName:"Nhóm Hướng Đông",
       cat: { sinhKhi:"Bắc",      thienY:"Nam",      dieNien:"Đông",     phucVi:"Đông Nam"},
       hung:{ hoaHai:"Tây Nam",   lucSat:"Tây Bắc",  nguQuy:"Tây",      tuyetMenh:"Đông Bắc" }},
-  6:{ cung:"Càn",   trach:"tay",  tractName:"Tây Tứ Trạch",
+  6:{ cung:"Càn",   trach:"tay",  tractName:"Nhóm Hướng Tây",
       cat: { sinhKhi:"Tây",      thienY:"Đông Bắc", dieNien:"Tây Nam",  phucVi:"Tây Bắc"},
       hung:{ hoaHai:"Đông Nam",  lucSat:"Đông",     nguQuy:"Nam",      tuyetMenh:"Bắc"  }},
-  7:{ cung:"Đoài",  trach:"tay",  tractName:"Tây Tứ Trạch",
+  7:{ cung:"Đoài",  trach:"tay",  tractName:"Nhóm Hướng Tây",
       cat: { sinhKhi:"Tây Bắc",  thienY:"Tây Nam",  dieNien:"Đông Bắc", phucVi:"Tây"    },
       hung:{ hoaHai:"Đông",      lucSat:"Đông Nam", nguQuy:"Bắc",      tuyetMenh:"Nam" }},
-  8:{ cung:"Cấn",   trach:"tay",  tractName:"Tây Tứ Trạch",
+  8:{ cung:"Cấn",   trach:"tay",  tractName:"Nhóm Hướng Tây",
       cat: { sinhKhi:"Tây Nam",  thienY:"Tây Bắc",  dieNien:"Tây",      phucVi:"Đông Bắc"},
       hung:{ hoaHai:"Nam",       lucSat:"Bắc",      nguQuy:"Đông",     tuyetMenh:"Đông Nam" }},
-  9:{ cung:"Ly",    trach:"dong", tractName:"Đông Tứ Trạch",
+  9:{ cung:"Ly",    trach:"dong", tractName:"Nhóm Hướng Đông",
       cat: { sinhKhi:"Đông",     thienY:"Đông Nam", dieNien:"Bắc",      phucVi:"Nam"    },
       hung:{ hoaHai:"Đông Bắc",  lucSat:"Tây Nam",  nguQuy:"Tây",      tuyetMenh:"Tây Bắc" }},
 };
@@ -134,7 +136,7 @@ export function FengShuiCompass() {
 
       {/* Input */}
       <div className="card p-4">
-        <p className="font-bold text-base mb-3" style={{ color:"var(--text-primary)" }}>🧭 Tính Cung Phi Bát Trạch</p>
+        <p className="font-bold text-base mb-3" style={{ color:"var(--text-primary)" }}>🧭 Xác Định Cung Mệnh Phong Thủy</p>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div>
             <p className="section-label mb-1.5">Giới tính</p>
@@ -156,7 +158,7 @@ export function FengShuiCompass() {
           </div>
         </div>
         <motion.button whileTap={{scale:0.97}} onClick={handleCalc} className="btn-gold w-full py-3 rounded-2xl font-semibold">
-          Tính Cung Phi →
+          Xem Cung Mệnh →
         </motion.button>
       </div>
 
@@ -164,21 +166,31 @@ export function FengShuiCompass() {
         {result && (
           <motion.div initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} className="flex flex-col gap-3">
             {/* Kua result */}
-            <div className="card p-4 flex items-center justify-between">
-              <div>
-                <p className="section-label mb-1">Cung Phi của bạn</p>
-                <p className="text-3xl font-bold font-display" style={{color:"var(--gold)"}}>
-                  {result.kua} — {result.cung}
+            <div className="card p-4">
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <div className="flex-1 min-w-0">
+                  <p className="section-label mb-1">Cung Mệnh của bạn</p>
+                  <p className="text-3xl font-bold font-display" style={{color:"var(--gold)"}}>
+                    {result.kua} — {result.cung}
+                  </p>
+                </div>
+                <button onClick={()=>setResult(null)}
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5"
+                  style={{background:"var(--bg-surface)",color:"var(--text-faint)"}}>✕</button>
+              </div>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <span className="text-sm px-3 py-1 rounded-full font-semibold"
+                  style={{
+                    background:result.trach==="dong"?"rgba(74,222,128,0.12)":"rgba(251,146,60,0.12)",
+                    color:result.trach==="dong"?"var(--accent-emerald)":"#f97316",
+                    border:`1px solid ${result.trach==="dong"?"rgba(74,222,128,0.25)":"rgba(251,146,60,0.25)"}`,
+                  }}>
+                  {result.tractName}
+                </span>
+                <p className="text-xs" style={{color:"var(--text-faint)"}}>
+                  {result.trach==="dong"?"Phù hợp Đông Tứ Mệnh":"Phù hợp Tây Tứ Mệnh"}
                 </p>
               </div>
-              <span className="text-sm px-3 py-1.5 rounded-full font-semibold"
-                style={{
-                  background:result.trach==="dong"?"rgba(74,222,128,0.12)":"rgba(251,146,60,0.12)",
-                  color:result.trach==="dong"?"var(--accent-emerald)":"#f97316",
-                  border:`1px solid ${result.trach==="dong"?"rgba(74,222,128,0.25)":"rgba(251,146,60,0.25)"}`,
-                }}>
-                {result.tractName}
-              </span>
             </div>
 
             {/* Sub tabs */}
@@ -412,17 +424,37 @@ function DirectionReadout({ smoothHeading, result }: {
 // ─── Direction Cards ──────────────────────────────────────────
 function DirectionCards({ result }: { result: KuaInfo }) {
   const catEntries = [
-    {key:"sinhKhi", label:"Sinh Khí",  desc:"Tốt nhất: tài lộc, sự nghiệp"},
-    {key:"thienY",  label:"Thiên Y",   desc:"Sức khỏe, hôn nhân, gia đình"},
-    {key:"dieNien", label:"Diên Niên", desc:"Thọ mệnh, quan hệ tốt, ổn định"},
-    {key:"phucVi",  label:"Phục Vị",   desc:"Bình an, duy trì, nghỉ ngơi"},
+    {key:"sinhKhi", label:"Sinh Khí",   badge:"✨ Tốt nhất",  desc:"Hướng đại cát — tài lộc, sự nghiệp hanh thông, nên đặt cửa chính"},
+    {key:"thienY",  label:"Thiên Y",    badge:"💚 Rất tốt",   desc:"Hướng sức khỏe — hôn nhân, gia đình hạnh phúc, nên đặt đầu giường"},
+    {key:"dieNien", label:"Diên Niên",  badge:"👍 Tốt",       desc:"Hướng trường thọ — quan hệ thuận hòa, ổn định lâu dài"},
+    {key:"phucVi",  label:"Phục Vị",    badge:"😌 Bình an",   desc:"Hướng nghỉ ngơi — bình an, duy trì, không tốt không xấu"},
   ];
   const hungEntries = [
-    {key:"tuyetMenh",label:"Tuyệt Mệnh",desc:"Xấu nhất: phá tài, bệnh tật"},
-    {key:"nguQuy",   label:"Ngũ Quỷ",   desc:"Tai họa, kiện tụng, hỏa hoạn"},
-    {key:"lucSat",   label:"Lục Sát",   desc:"Tình duyên trục trặc, lừa đảo"},
-    {key:"hoaHai",   label:"Họa Hại",   desc:"Tranh chấp, rắc rối nhỏ"},
+    {key:"tuyetMenh",label:"Tuyệt Mệnh", badge:"🚫 Rất xấu",  desc:"Tuyệt Mệnh (Rất xấu - Kỵ làm nhà, mở cửa) — dễ phá tài, bệnh tật"},
+    {key:"nguQuy",   label:"Ngũ Quỷ",    badge:"⛔ Xấu nặng", desc:"Ngũ Quỷ (Xấu nặng - Kỵ bếp, phòng ngủ) — tai họa, kiện tụng, hỏa hoạn"},
+    {key:"lucSat",   label:"Lục Sát",    badge:"⚠️ Xấu",      desc:"Lục Sát (Xấu - Hại tình duyên) — trục trặc quan hệ, dễ bị lừa đảo"},
+    {key:"hoaHai",   label:"Họa Hại",    badge:"😬 Xấu nhẹ",  desc:"Họa Hại (Xấu nhẹ - Gây rắc rối) — tranh chấp nhỏ, phiền phức"},
   ];
+
+  const handleShare = () => {
+    shareFengShuiImage({
+      kua: result.kua,
+      cung: result.cung,
+      tractName: result.tractName,
+      catDirs: [
+        { label:"Sinh Khí",   dir:result.cat.sinhKhi,   badge:"✨ Tốt nhất" },
+        { label:"Thiên Y",    dir:result.cat.thienY,    badge:"💚 Rất tốt"  },
+        { label:"Diên Niên",  dir:result.cat.dieNien,   badge:"👍 Tốt"      },
+        { label:"Phục Vị",    dir:result.cat.phucVi,    badge:"😌 Bình an"  },
+      ],
+      hungDirs: [
+        { label:"Tuyệt Mệnh", dir:result.hung.tuyetMenh, badge:"Rất xấu"  },
+        { label:"Ngũ Quỷ",    dir:result.hung.nguQuy,    badge:"Xấu nặng" },
+        { label:"Lục Sát",    dir:result.hung.lucSat,    badge:"Xấu"      },
+        { label:"Họa Hại",    dir:result.hung.hoaHai,    badge:"Xấu nhẹ"  },
+      ],
+    });
+  };
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -430,19 +462,22 @@ function DirectionCards({ result }: { result: KuaInfo }) {
         <div className="px-4 py-2.5 border-b" style={{background:"rgba(74,222,128,0.07)",borderColor:"rgba(74,222,128,0.15)"}}>
           <p className="font-semibold text-sm" style={{color:"var(--accent-emerald)"}}>✅ 4 Hướng Cát</p>
         </div>
-        {catEntries.map(({key,label,desc},i)=>{
+        {catEntries.map(({key,label,badge,desc},i)=>{
           const dir=result.cat[key as keyof CatSet];
           return (
-            <div key={key} className={`px-4 py-3.5 flex items-center gap-3 ${i<3?"border-b":""}`} style={{borderColor:"var(--border-subtle)"}}>
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold flex-shrink-0"
+            <div key={key} className={`px-4 py-3.5 flex items-start gap-3 ${i<3?"border-b":""}`} style={{borderColor:"var(--border-subtle)"}}>
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold flex-shrink-0 mt-0.5"
                 style={{background:"rgba(74,222,128,0.1)",color:"var(--accent-emerald)",border:"1px solid rgba(74,222,128,0.2)"}}>
                 {DIR_ABBR[dir]??dir.slice(0,2)}
               </div>
-              <div className="flex-1">
-                <p className="font-semibold" style={{color:"var(--text-primary)"}}>{label}</p>
-                <p className="text-xs" style={{color:"var(--text-muted)"}}>{desc}</p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                  <p className="font-semibold" style={{color:"var(--text-primary)"}}>{label}</p>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{background:"rgba(74,222,128,0.12)",color:"var(--accent-emerald)"}}>{badge}</span>
+                </div>
+                <p className="text-xs leading-relaxed" style={{color:"var(--text-muted)"}}>{desc}</p>
               </div>
-              <div className="text-right">
+              <div className="text-right flex-shrink-0">
                 <p className="font-bold" style={{color:"var(--accent-emerald)"}}>{dir}</p>
                 <p className="text-xs" style={{color:"var(--text-faint)"}}>{DIR_EN[dir]}</p>
               </div>
@@ -455,19 +490,22 @@ function DirectionCards({ result }: { result: KuaInfo }) {
         <div className="px-4 py-2.5 border-b" style={{background:"rgba(248,113,113,0.07)",borderColor:"rgba(248,113,113,0.15)"}}>
           <p className="font-semibold text-sm" style={{color:"var(--accent-red)"}}>⚠️ 4 Hướng Hung</p>
         </div>
-        {hungEntries.map(({key,label,desc},i)=>{
+        {hungEntries.map(({key,label,badge,desc},i)=>{
           const dir=result.hung[key as keyof HungSet];
           return (
-            <div key={key} className={`px-4 py-3.5 flex items-center gap-3 ${i<3?"border-b":""}`} style={{borderColor:"var(--border-subtle)"}}>
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold flex-shrink-0"
+            <div key={key} className={`px-4 py-3.5 flex items-start gap-3 ${i<3?"border-b":""}`} style={{borderColor:"var(--border-subtle)"}}>
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold flex-shrink-0 mt-0.5"
                 style={{background:"rgba(248,113,113,0.08)",color:"var(--accent-red)",border:"1px solid rgba(248,113,113,0.15)"}}>
                 {DIR_ABBR[dir]??dir.slice(0,2)}
               </div>
-              <div className="flex-1">
-                <p className="font-semibold" style={{color:"var(--text-primary)"}}>{label}</p>
-                <p className="text-xs" style={{color:"var(--text-muted)"}}>{desc}</p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                  <p className="font-semibold" style={{color:"var(--text-primary)"}}>{label}</p>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{background:"rgba(248,113,113,0.1)",color:"var(--accent-red)"}}>{badge}</span>
+                </div>
+                <p className="text-xs leading-relaxed" style={{color:"var(--text-muted)"}}>{desc}</p>
               </div>
-              <div className="text-right">
+              <div className="text-right flex-shrink-0">
                 <p className="font-bold" style={{color:"var(--accent-red)"}}>{dir}</p>
                 <p className="text-xs" style={{color:"var(--text-faint)"}}>{DIR_EN[dir]}</p>
               </div>
@@ -496,6 +534,14 @@ function DirectionCards({ result }: { result: KuaInfo }) {
           ))}
         </div>
       </div>
+
+      {/* Share button */}
+      <button onClick={handleShare}
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-semibold"
+        style={{ background:"var(--bg-elevated)", border:"1px solid var(--border-subtle)", color:"var(--text-secondary)" }}>
+        📤 Chia sẻ Cung Mệnh
+      </button>
     </div>
   );
 }
+

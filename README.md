@@ -2,8 +2,8 @@
 
 > **Ứng dụng lịch âm dương, phong thủy, và hỏi thầy AI** — Progressive Web App (PWA) dành cho người Việt Nam, tối ưu cho điện thoại, có thể cài offline như ứng dụng thật.
 
-**🌐 Demo:** [huyen-co-cac.pages.dev](https://huyen-co-cac.pages.dev)  
-**📦 Repo:** `letinhclover/huyen-co-cac` (Cloudflare Pages)
+**🌐 Demo:** [lich-van-nien.pages.dev](https://lich-van-nien.pages.dev)  
+**📦 Repo:** `letinhclover/lich-van-nien` (Cloudflare Pages)
 
 ---
 

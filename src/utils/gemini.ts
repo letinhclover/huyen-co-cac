@@ -42,17 +42,17 @@ function buildPrompt(
 ): string {
   const guides: Record<FortuneTopic, string> = {
     "Tổng quan":   "Tổng quan năng lượng hôm nay: cảm xúc, tương tác xã hội, lời khuyên thực tế tốt nhất.",
-    "Sự Nghiệp":   "Công việc hôm nay: deadline, đồng nghiệp, cơ hội hay rủi ro. Rất cụ thể và thực tế.",
+    "Sự Nghiệp":   "Công việc hôm nay: việc còn dang dở, đồng nghiệp, cơ hội hay rủi ro. Rất cụ thể và thực tế.",
     "Tình Duyên":  "Tình cảm hôm nay: nếu độc thân — cơ hội gặp gỡ hay tự yêu bản thân. Nếu có đôi — giữ lửa hoặc giải mâu thuẫn. Ấm áp, không phán xét.",
     "Tài Lộc":     "Tiền bạc hôm nay: nên chi tiêu không, cơ hội tài chính, hay nhắc tiết kiệm. Thực tế và hữu ích.",
   };
 
   // Few-shot examples — cách hiệu quả nhất để ép AI viết đúng tone
   const examples: Record<FortuneTopic, string> = {
-    "Tổng quan": `"Hôm nay khá ổn cho bạn đó, ngày ${todayCanChi} hợp với tuổi ${userCanChi} nên mọi thứ sẽ chảy khá mượt. Nếu có task tồn đọng thì giờ là lúc xử lý, đầu óc sẽ minh mẫn hơn bình thường. Tối về đừng doom-scroll đến 12 giờ đêm, ngủ sớm một chút là ngày mai sẽ ngon hơn."`,
-    "Sự Nghiệp": `"Hôm nay hợp để push deadline hoặc chốt những việc đang còn lửng lơ, đừng để qua ngày mai. Nếu có meeting quan trọng thì cứ tự tin nói ý kiến, ngày ${todayCanChi} hỗ trợ khá tốt cho việc thuyết phục người khác. Buổi chiều có thể hơi mệt, pha cà phê hoặc trà sữa rồi lại chiến tiếp nhé."`,
-    "Tình Duyên": `"Hôm nay năng lượng cảm xúc khá dễ chịu, nếu có ai đó bạn đang nhắn tin qua lại thì đây là lúc chủ động hơn một chút. Nếu đã có đôi thì tối nay rủ đi ăn gì đó thay vì mỗi người một điện thoại, nhỏ thôi nhưng giữ lửa được lắm. Còn nếu đang độc thân và chưa muốn yêu thì tự chiều bản thân một bữa ngon cũng được."`,
-    "Tài Lộc": `"Hôm nay tiền bạc ở mức bình thường, không có gì đặc biệt để lo nhưng cũng đừng chi tay quá. Nếu đang định mua đồ online thì xem lại giỏ hàng một lần nữa, cái nào thực sự cần thì mới bấm đặt. Tiết kiệm nhỏ hôm nay, cuối tháng sẽ thấy thoải mái hơn."`,
+    "Tổng quan": `"Hôm nay khá ổn cho bạn, ngày ${todayCanChi} hợp với tuổi ${userCanChi} nên mọi việc sẽ chảy khá trơn tru. Nếu có việc còn bỏ dở thì giờ là lúc giải quyết cho gọn, đầu óc sẽ sáng suốt hơn bình thường. Tối về đừng thức quá khuya lướt điện thoại, ngủ sớm một chút là ngày mai sẽ tốt hơn."`,
+    "Sự Nghiệp": `"Hôm nay hợp để giải quyết những việc đang còn dở dang, đừng để qua ngày mai. Nếu có buổi họp quan trọng thì cứ tự tin nói ý kiến, ngày ${todayCanChi} hỗ trợ khá tốt cho việc thuyết phục người khác. Buổi chiều có thể hơi mệt, pha cà phê hoặc trà rồi lại làm tiếp nhé."`,
+    "Tình Duyên": `"Hôm nay cảm xúc khá dễ chịu, nếu có ai đó bạn đang nhắn tin qua lại thì đây là lúc chủ động hơn một chút. Nếu đã có người yêu thì tối nay rủ đi ăn gì đó thay vì mỗi người một cái điện thoại, nhỏ thôi nhưng giữ được tình cảm. Nếu đang độc thân và chưa muốn yêu thì tự thưởng cho mình bữa ngon cũng vui."`,
+    "Tài Lộc": `"Hôm nay tiền bạc ở mức bình thường, không có gì đặc biệt nhưng cũng đừng tiêu hoang. Nếu định mua sắm thì cân nhắc thêm một lần nữa, thứ nào thực sự cần mới mua. Tiết kiệm từng chút hôm nay, cuối tháng sẽ thấy nhẹ ví hơn nhiều."`,
   };
 
   return `Bạn là người hay xem bói cho bạn bè, nhắn tin kiểu Gen Z Việt Nam — gần gũi, thực tế, không màu mè.
@@ -65,12 +65,13 @@ Dữ liệu: Can Chi tuổi ${userCanChi} | Mệnh ${userMenh} | Can Chi ngày $
 Nội dung: ${guides[topic]}
 
 Quy tắc cứng:
+0. TUYỆT ĐỐI KHÔNG dùng tiếng Anh (không viết: task, deadline, doom-scroll, push, meeting, work, money, friendship, love...).
 1. Đúng 3 câu, viết liền không xuống dòng. KHÔNG được 4 câu hay nhiều hơn.
 2. Câu đầu KHÔNG chào hỏi ("Xin chào", "Buddy", "Hey"...) — đi thẳng vào luận giải.
 3. Gọi là "bạn". KHÔNG nhắc năm sinh, KHÔNG nhắc mệnh như giải thích lý thuyết.
 4. Chỉ nói về chủ đề "${topic}". KHÔNG lẫn sang chủ đề khác.
 5. KHÔNG bịa thuật ngữ — chỉ dùng Can Chi "${todayCanChi}" nếu cần nhắc đến ngày.
-6. Ví dụ thật: meeting, Grab, order đồ ăn, nhắn tin crush, deadline, trà sữa...
+6. Ví dụ thật: Grab, gọi đồ ăn, nhắn tin người thương, trà sữa, chợ, đi làm...
 7. Text thuần, không markdown, không bullet, không xuống dòng giữa câu.`;
 }
 

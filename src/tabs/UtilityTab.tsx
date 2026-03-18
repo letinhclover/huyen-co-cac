@@ -47,10 +47,10 @@ export function UtilityTab({ birthYear }: Props) {
         </div>
       </div>
 
-      <div className="px-4 pt-3">
+      <div className="pt-3">
         <AnimatePresence mode="wait">
           {tool === "laban" && (
-            <motion.div key="laban" initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }}>
+            <motion.div key="laban" initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} className="px-4">
               <FengShuiCompass />
             </motion.div>
           )}
@@ -60,7 +60,7 @@ export function UtilityTab({ birthYear }: Props) {
             </motion.div>
           )}
           {tool === "vankhan" && (
-            <motion.div key="vankhan" initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }}>
+            <motion.div key="vankhan" initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} className="px-4">
               <SmartPrayer />
             </motion.div>
           )}

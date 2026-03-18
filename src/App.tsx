@@ -16,6 +16,8 @@ import { TuviTab }          from "./tabs/TuviTab";
 import { UtilityTab }       from "./tabs/UtilityTab";
 import { EventsTab }        from "./tabs/EventsTab";
 import { buildUserProfile, UserProfile } from "./utils/astrology";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { tryDailyNotification, tryEventReminders, requestNotificationPermission, getNotificationPermission } from "./utils/notifications";
 
 type TabId = "calendar" | "thay" | "events" | "tienich" | "profile";
 
@@ -65,6 +67,27 @@ export default function App() {
       if (!isNaN(y)) setProfile(buildUserProfile(y));
     }
   }, []);
+
+  // Notification: request permission + send daily + event reminders
+  useEffect(() => {
+    const perm = getNotificationPermission();
+    if (perm === "unsupported") return;
+
+    // Auto-request permission after 10s if never asked
+    const hasAsked = !!localStorage.getItem("hcc_notif_asked");
+    if (!hasAsked && perm === "default") {
+      const t = setTimeout(async () => {
+        try { localStorage.setItem("hcc_notif_asked", "1"); } catch {}
+        await requestNotificationPermission();
+      }, 10_000);
+      return () => clearTimeout(t);
+    }
+
+    // Try daily + event notifications on open
+    if (perm === "granted") {
+      tryEventReminders();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Onboarding toast — show once if no birth year saved
   useEffect(() => {
@@ -119,16 +142,81 @@ export default function App() {
               </div>
             )}
 
-            {tab === "thay"    && <ThayTab birthYear={profile?.birthYear} />}
+            {tab === "thay" && (
+              <ErrorBoundary name="Hỏi Thầy">
+                <ThayTab birthYear={profile?.birthYear} />
+              </ErrorBoundary>
+            )}
             {tab === "events"  && <EventsTab />}
             {tab === "tienich" && <UtilityTab birthYear={profile?.birthYear} />}
             {tab === "profile" && (
               <div>
                 <ProfileTab userProfile={profile} onProfileChange={setProfile} />
                 <div className="mx-4 mb-2 mt-4"><SectionLabel label="Tử Vi Trọn Đời" /></div>
-                <TuviTab birthYear={profile?.birthYear} />
+                <ErrorBoundary name="Tử Vi"><TuviTab birthYear={profile?.birthYear} /></ErrorBoundary>
                 <div className="mx-4 mb-2 mt-4"><SectionLabel label="AI Luận Giải" /></div>
-                <AiTab date={viewDate} userProfile={profile} onSetupProfile={() => changeTab("profile")} />
+                <ErrorBoundary name="AI Luận Giải"><AiTab date={viewDate} userProfile={profile} onSetupProfile={() => window.scrollTo({top:0,behavior:"smooth"})} /></ErrorBoundary>
+
+                {/* Author & Donate Card — dưới cùng */}
+                <div className="mt-4 overflow-hidden"
+                  style={{borderTop:"1px solid var(--border-subtle)",borderBottom:"1px solid var(--border-subtle)",background:"var(--bg-surface)"}}>
+
+                  {/* Header */}
+                  <div className="px-4 py-3.5 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                      style={{background:"var(--gold-bg)",border:"1px solid var(--gold-border)"}}>🧑‍💻</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm" style={{color:"var(--text-primary)"}}>Phát triển bởi Lê Tỉnh</p>
+                      <p className="text-xs" style={{color:"var(--text-muted)"}}>Lịch Vạn Niên AI 2026 · v1.0</p>
+                    </div>
+                  </div>
+
+                  <div className="h-px mx-4" style={{background:"var(--border-subtle)"}}/>
+
+                  {/* Donate info */}
+                  <div className="px-4 pt-3 pb-2">
+                    <p className="text-sm leading-relaxed text-center" style={{color:"var(--text-secondary)"}}>
+                      Nếu app có ích, hãy chia sẻ và mời tác giả một ly cà phê để tiếp tục phát triển thêm nhé! ☕
+                    </p>
+                    <div className="mt-2.5 rounded-xl px-4 py-2.5"
+                      style={{background:"var(--bg-elevated)",border:"1px solid var(--border-subtle)"}}>
+                      <p className="text-xs text-center mb-1" style={{color:"var(--text-muted)"}}>
+                        Ủng hộ qua
+                      </p>
+                      <div className="flex items-center justify-center gap-3 flex-wrap">
+                        <span className="text-sm font-bold" style={{color:"#ae2070"}}>MoMo</span>
+                        <span style={{color:"var(--border-medium)"}}>·</span>
+                        <span className="text-sm font-bold" style={{color:"#0068FF"}}>ZaloPay</span>
+                        <span style={{color:"var(--border-medium)"}}>·</span>
+                        <span className="text-sm font-bold" style={{color:"#006D38"}}>VCB</span>
+                        <span style={{color:"var(--border-medium)"}}>·</span>
+                        <span className="text-sm font-bold" style={{color:"var(--gold)"}}>0973803789</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2 buttons side by side */}
+                  <div className="px-4 pb-6 pt-1 flex gap-2">
+                    <a href="https://me.momo.vn/dev0973803789" target="_blank" rel="noopener noreferrer"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-sm text-white no-underline"
+                      style={{background:"linear-gradient(135deg,#ae2070,#d0226b)"}}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                      </svg>
+                      Ủng hộ tác giả
+                    </a>
+                    <button onClick={()=>{
+                      if(navigator.share){navigator.share({title:"Lịch Vạn Niên AI 2026",text:"Ứng dụng lịch âm, xem ngày tốt, phong thủy, tử vi AI hoàn toàn miễn phí! 🔮",url:"https://lich-van-nien.pages.dev"}).catch(()=>{});}
+                      else{navigator.clipboard.writeText("https://lich-van-nien.pages.dev").then(()=>alert("Đã sao chép link!")).catch(()=>{});}
+                    }} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-sm"
+                      style={{background:"var(--bg-elevated)",border:"1px solid var(--border-medium)",color:"var(--text-secondary)"}}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+                      </svg>
+                      Chia sẻ app
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </motion.div>
@@ -139,41 +227,45 @@ export default function App() {
       <AnimatePresence>
         {showToast && (
           <motion.div
-            initial={{ opacity:0, y:-80, scale:0.92 }}
-            animate={{ opacity:1, y:0,   scale:1,   transition:{ type:"spring", damping:22, stiffness:260 } }}
-            exit={{    opacity:0, y:-60, scale:0.95, transition:{ duration:0.22 } }}
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-xs w-[calc(100%-2rem)]"
+            initial={{ opacity:0, y:-100 }}
+            animate={{ opacity:1, y:0, transition:{ type:"spring", damping:26, stiffness:280 } }}
+            exit={{    opacity:0, y:-80, transition:{ duration:0.2 } }}
+            className="fixed top-3 left-3 right-3 z-50"
+            style={{ maxWidth: 420, margin: "0 auto" }}
           >
-            <div className="rounded-2xl px-4 py-3.5 flex items-start gap-3"
+            <div className="rounded-2xl overflow-hidden"
               style={{
                 background:"var(--bg-elevated)",
                 border:"1px solid var(--gold-border)",
-                boxShadow:"var(--shadow-float)",
+                boxShadow:"0 16px 48px rgba(0,0,0,0.4), 0 0 0 1px rgba(245,166,35,0.15)",
               }}>
-              <span className="text-2xl flex-shrink-0 mt-0.5">👋</span>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm mb-1" style={{color:"var(--text-primary)"}}>
-                  Chào bạn mới!
-                </p>
-                <p className="text-xs leading-relaxed" style={{color:"var(--text-secondary)"}}>
-                  Cập nhật <strong>Năm Sinh</strong> ở tab Bản Mệnh để nhận thông điệp vũ trụ chính xác nhé!
-                </p>
-                <div className="flex gap-2 mt-2.5">
-                  <motion.button whileTap={{scale:0.95}} onClick={() => dismissToast(true)}
-                    className="flex-1 py-2 rounded-xl text-xs font-bold"
-                    style={{background:"#B8720A",color:"#FFFFFF"}}>
-                    👤 Cập nhật ngay
-                  </motion.button>
-                  <motion.button whileTap={{scale:0.95}} onClick={() => dismissToast(false)}
-                    className="px-3 py-2 rounded-xl text-xs font-bold"
-                    style={{background:"var(--bg-surface)",color:"var(--text-muted)"}}>
-                    Bỏ qua
-                  </motion.button>
+              <div className="h-1" style={{background:"linear-gradient(90deg,#B8720A,#F5A623)"}}/>
+              <div className="p-3.5 flex items-start gap-3">
+                <span className="text-2xl flex-shrink-0">👋</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm mb-0.5" style={{color:"var(--text-primary)"}}>
+                    Chào bạn mới!
+                  </p>
+                  <p className="text-xs leading-relaxed" style={{color:"var(--text-secondary)"}}>
+                    Cập nhật <strong>Năm Sinh</strong> ở tab Bản Mệnh để nhận luận giải chính xác nhé!
+                  </p>
+                  <div className="flex gap-2 mt-2.5">
+                    <motion.button whileTap={{scale:0.95}} onClick={() => dismissToast(true)}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold"
+                      style={{background:"#B8720A",color:"#FFF"}}>
+                      👤 Thiết lập ngay
+                    </motion.button>
+                    <motion.button whileTap={{scale:0.95}} onClick={() => dismissToast(false)}
+                      className="px-3 py-2 rounded-xl text-xs"
+                      style={{background:"var(--bg-surface)",color:"var(--text-muted)"}}>
+                      Bỏ qua
+                    </motion.button>
+                  </div>
                 </div>
+                <button onClick={() => dismissToast(false)}
+                  className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs"
+                  style={{background:"var(--bg-surface)",color:"var(--text-faint)"}}>✕</button>
               </div>
-              <button onClick={() => dismissToast(false)}
-                className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs"
-                style={{background:"var(--bg-elevated)",color:"var(--text-faint)"}}>✕</button>
             </div>
           </motion.div>
         )}

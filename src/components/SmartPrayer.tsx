@@ -218,6 +218,38 @@ function PrayerReader({ prayer, onBack }: { prayer: Prayer; onBack: () => void }
         </p>
       </div>
 
+      {/* Share / Copy buttons */}
+      <div className="flex gap-2">
+        <motion.button whileTap={{ scale: 0.97 }}
+          onClick={() => {
+            const plainText = prayer.content
+              .replace(/\[tên tín chủ\]/g, tenTinChu || "[tên tín chủ]")
+              .replace(/\[địa chỉ cư ngụ\]/g, diaChi || "[địa chỉ cư ngụ]")
+              .replace(/\[ngày tháng\]/g, todayStr);
+            navigator.clipboard.writeText(plainText).then(() => alert("Đã sao chép văn khấn!")).catch(() => {});
+          }}
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-semibold"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}>
+          📋 Sao chép
+        </motion.button>
+        <motion.button whileTap={{ scale: 0.97 }}
+          onClick={() => {
+            const plainText = prayer.content
+              .replace(/\[tên tín chủ\]/g, tenTinChu || "[tên tín chủ]")
+              .replace(/\[địa chỉ cư ngụ\]/g, diaChi || "[địa chỉ cư ngụ]")
+              .replace(/\[ngày tháng\]/g, todayStr);
+            if (navigator.share) {
+              navigator.share({ title: prayer.title, text: plainText }).catch(() => {});
+            } else {
+              navigator.clipboard.writeText(plainText).then(() => alert("Đã sao chép! Dán vào Zalo/FB để chia sẻ.")).catch(() => {});
+            }
+          }}
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-semibold"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}>
+          📤 Chia sẻ
+        </motion.button>
+      </div>
+
       {/* Note */}
       <p className="text-xs text-center px-4" style={{ color:"var(--text-faint)" }}>
         Chữ màu vàng = đã điền thông tin · Chữ đỏ = chưa điền

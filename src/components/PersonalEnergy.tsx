@@ -58,7 +58,7 @@ export function PersonalEnergy({ userProfile, currentDate, onSetupProfile }: Pro
       </div>
 
       {/* Oracle tab inline */}
-      <OracleTab />
+      <OracleTab canChiYear={userProfile.canChiYear} elementName={userProfile.elementName} todayCanChi={todayCanChi} />
     </div>
   );
 }

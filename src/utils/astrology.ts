@@ -153,35 +153,35 @@ export const SHOPEE_PRODUCTS: Record<string, ShopeeProduct> = {
     emoji: "💎",
     description: "Thạch anh trắng tăng cường năng lượng Kim, thu hút tài lộc và thanh lọc không gian xung quanh bạn.",
     price: "từ 89.000đ",
-    url: "https://shopee.vn/search?keyword=vong+thach+anh+trang+phong+thuy",
+    url: "https://s.shopee.vn/2BA6PD7Tho",
   },
   moc: {
     name: "Vòng Mắt Hổ Tự Nhiên Mệnh Mộc",
     emoji: "🟡",
     description: "Đá mắt hổ giúp tăng sự tự tin, kiên định và bảo vệ bạn khỏi những năng lượng tiêu cực mỗi ngày.",
     price: "từ 120.000đ",
-    url: "https://shopee.vn/search?keyword=vong+mat+ho+tu+nhien+phong+thuy",
+    url: "https://s.shopee.vn/AKVo8QpDWE",
   },
   thuy: {
     name: "Vòng Aquamarine Xanh Biển Mệnh Thủy",
     emoji: "🩵",
     description: "Aquamarine giúp tâm trí bình yên, cải thiện giao tiếp và tăng trực giác nhạy bén của người mệnh Thủy.",
     price: "từ 150.000đ",
-    url: "https://shopee.vn/search?keyword=vong+da+xanh+bien+aquamarine+phong+thuy",
+    url: "https://s.shopee.vn/2LTWbOZEhP",
   },
   hoa: {
     name: "Vòng Mã Não Đỏ Rực Mệnh Hỏa",
     emoji: "🔴",
     description: "Mã não đỏ là viên đá của đam mê và nhiệt huyết, giúp người mệnh Hỏa bùng cháy năng lượng mỗi ngày.",
     price: "từ 95.000đ",
-    url: "https://shopee.vn/search?keyword=vong+ma+nao+do+phong+thuy+menh+hoa",
+    url: "https://s.shopee.vn/7VBckwxNq5",
   },
   tho: {
     name: "Vòng Thạch Anh Tím Mệnh Thổ",
     emoji: "💜",
     description: "Thạch anh tím kết hợp sự vững chắc của Thổ và trực giác tâm linh, giúp bạn đưa ra quyết định khôn ngoan.",
     price: "từ 110.000đ",
-    url: "https://shopee.vn/search?keyword=vong+thach+anh+tim+phong+thuy+menh+tho",
+    url: "https://s.shopee.vn/10y916K7Kr",
   },
 };
 
@@ -493,4 +493,34 @@ export function calculateDailyEnergy(userProfile: UserProfile, date: Date): Ener
   }
 
   return { score, status, statusLabel, statusColor, headline, detail, luckyColor, avoidAction };
+}
+
+// ─── Lunar to Solar Conversion ────────────────────────────────
+// Duyệt từ đầu tháng âm lịch để tìm ngày dương lịch tương ứng
+export function lunarToSolar(
+  lunarDay: number, lunarMonth: number, lunarYear: number,
+  isLeapMonth = false
+): { day:number; month:number; year:number } | null {
+  // Search around the lunar year - start from Jan of that year
+  const startSolar = { day:1, month:1, year: lunarYear };
+  const endYear = lunarYear + 1;
+
+  for (let y = lunarYear - 1; y <= endYear; y++) {
+    for (let m = 1; m <= 12; m++) {
+      // Days in this solar month
+      const daysInMonth = new Date(y, m, 0).getDate();
+      for (let d = 1; d <= daysInMonth; d++) {
+        const lunar = solarToLunar(d, m, y);
+        if (
+          lunar.day === lunarDay &&
+          lunar.month === lunarMonth &&
+          lunar.year === lunarYear &&
+          lunar.isLeapMonth === isLeapMonth
+        ) {
+          return { day:d, month:m, year:y };
+        }
+      }
+    }
+  }
+  return null;
 }

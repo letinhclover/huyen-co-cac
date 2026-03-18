@@ -380,7 +380,7 @@ export const ENERGY_ADVICES: EnergyAdvice[] = [
     headline: "Chế độ siêu năng lực đã kích hoạt!",
     advice:
       "Khả năng tập trung và quyết đoán của bạn hôm nay đang ở mức cao bất thường. Những quyết định quan trọng — công việc, tài chính, kế hoạch — sẽ được xử lý rất tốt nếu bạn thực hiện hôm nay.",
-    tip: "Block 2 tiếng vàng sáng sớm cho work deep nhất",
+    tip: "Dành 2 tiếng buổi sáng cho việc quan trọng nhất trong ngày",
   },
   {
     id: 6,
@@ -584,7 +584,7 @@ export const ENERGY_ADVICES: EnergyAdvice[] = [
     headline: "Ngày phù hợp để sáng tạo",
     advice:
       "Năng lượng ở mức vừa phải hôm nay tạo ra sự cân bằng hoàn hảo giữa logic và cảm xúc — đây là trạng thái lý tưởng nhất cho công việc sáng tạo. Viết lách, thiết kế, vẽ vời, âm nhạc — hãy thử đi.",
-    tip: "Dành 30 phút làm điều gì đó creative mà không có deadline",
+    tip: "Dành 30 phút làm điều gì đó sáng tạo mà không bị áp lực thời gian",
   },
   {
     id: 26,
@@ -603,8 +603,8 @@ export const ENERGY_ADVICES: EnergyAdvice[] = [
     emoji: "🧩",
     headline: "Xếp mảnh ghép của ngày hôm nay",
     advice:
-      "Hôm nay mọi thứ có thể hơi rời rạc — đừng vội vàng ép chúng vào nhau. Hãy xử lý từng việc một, không multitask. Khi bạn hoàn thành từng mảnh một cách cẩn thận, bức tranh tổng thể sẽ đẹp thôi.",
-    tip: "Single-tasking là siêu năng lực — thử không làm 2 việc cùng lúc",
+      "Hôm nay mọi thứ có thể hơi rời rạc — đừng vội vàng ép chúng vào nhau. Hãy xử lý từng việc một, không làm nhiều việc cùng lúc. Khi bạn hoàn thành từng mảnh một cách cẩn thận, bức tranh tổng thể sẽ đẹp thôi.",
+    tip: "Tập trung một việc là siêu năng lực — thử không làm 2 việc cùng một lúc",
   },
   {
     id: 28,

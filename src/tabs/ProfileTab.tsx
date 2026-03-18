@@ -309,6 +309,7 @@ export function ProfileTab({ userProfile, onProfileChange }: ProfileTabProps) {
       {shopee && activeProfile && activeMember && (
         <ShopeeCard product={shopee} element={activeProfile.element} canChi={activeProfile.canChiYear} />
       )}
+
     </div>
   );
 }
@@ -369,7 +370,7 @@ function ShopeeCard({ product, element, canChi }: {
         </div>
 
         {/* Price + CTA */}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 mb-2">
           <p className="text-sm font-semibold" style={{ color:"var(--text-muted)" }}>
             {product.price}
           </p>
@@ -381,6 +382,14 @@ function ShopeeCard({ product, element, canChi }: {
             🛒 Thỉnh trên Shopee
           </motion.div>
         </div>
+        {/* KOL store link */}
+        <a href="https://collshp.com/letinhclover1612/category/3507909?view=storefront"
+          target="_blank" rel="noopener noreferrer"
+          className="flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-semibold no-underline"
+          style={{ background:"rgba(0,0,0,0.18)", color:"rgba(255,255,255,0.75)" }}>
+          <span>✨</span>
+          <span>Sắm vòng tay phong thủy theo mệnh →</span>
+        </a>
       </div>
     </a>
   );
